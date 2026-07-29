@@ -1,0 +1,7 @@
+<?php
+require_once __DIR__ . '/app/bootstrap.php';
+$pageTitle='Privacy and safety'; $bodyClass='content-page'; require base_path('partials/header.php');
+?>
+<section class="page-hero safety-hero"><div class="container"><span class="eyebrow light">Privacy and safety</span><h1>Designed for focused, supervised learning</h1><p>CodeMwana limits account data and avoids social features that are unnecessary for the coursework objective.</p></div></section>
+<section class="section"><div class="container narrow prose"><h2>Information stored</h2><p>The demonstration stores a learner's name, username, email, age group, password hash, lesson progress, quiz attempts, points, badges and saved code projects. Plain-text passwords are never stored.</p><h2>Features deliberately excluded</h2><p>There is no public chat, direct messaging, location tracking, advertising, public profile search, photo upload or contact with strangers. The code lab interprets a limited educational language rather than executing arbitrary JavaScript entered by a learner.</p><h2>Adult guidance</h2><p>Children should create and use learning accounts with suitable guidance from a parent, guardian or teacher. A production deployment should publish a formal privacy notice, use HTTPS, provide account deletion procedures and follow applicable institutional policies.</p></div></section>
+<?php require base_path('partials/footer.php'); ?>

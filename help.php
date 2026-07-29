@@ -1,0 +1,7 @@
+<?php
+require_once __DIR__ . '/app/bootstrap.php';
+$pageTitle='Help'; $bodyClass='content-page'; require base_path('partials/header.php');
+?>
+<section class="page-hero help-hero"><div class="container"><span class="eyebrow light">Help centre</span><h1>Common questions</h1><p>Quick guidance for learners, teachers and the project assessor.</p></div></section>
+<section class="section"><div class="container narrow faq-list"><details open><summary>How do I complete a lesson?</summary><p>Open a learning path, read the lesson, try its challenge in Code Lab and score at least 60% on the quiz.</p></details><details><summary>How does MwanaCode run safely?</summary><p>The browser reads only a fixed list of beginner commands. It does not use eval() and does not execute arbitrary JavaScript.</p></details><details><summary>Why did my project not save?</summary><p>Confirm that you are signed in, the database is installed and the project title is not empty. The page shows a save status near the toolbar.</p></details><details><summary>Can the project work on XAMPP?</summary><p>Yes. Copy the folder into htdocs, create the MySQL database, configure .env, open setup.php once and then remove setup.php after installation.</p></details><details><summary>Where is progress stored?</summary><p>Progress, quiz attempts, saved projects and badges are stored in relational database tables and remain available across sessions.</p></details></div></section>
+<?php require base_path('partials/footer.php'); ?>

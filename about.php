@@ -1,0 +1,7 @@
+<?php
+require_once __DIR__ . '/app/bootstrap.php';
+$pageTitle='About the project'; $bodyClass='content-page'; require base_path('partials/header.php');
+?>
+<section class="page-hero about-hero"><div class="container"><span class="eyebrow light">ICT4410 mini project</span><h1>About CodeMwana</h1><p>A database-backed web application for teaching children basic programming skills and concepts.</p></div></section>
+<section class="section"><div class="container narrow prose"><h2>The need</h2><p>Many beginner coding platforms assume continuous connectivity, large screens, unrestricted browser execution or prior familiarity with technical English. CodeMwana demonstrates a smaller, locally suitable alternative that uses short text-based activities, familiar examples and lightweight pages.</p><h2>The learning approach</h2><p>The system introduces computational thinking before syntax. Learners practise sequencing, variables, conditions, repetition and debugging through a controlled language called MwanaCode, then connect those ideas to basic web creation.</p><h2>Technical scope</h2><p>The application uses semantic HTML, an external responsive CSS file, JavaScript for interactivity, PHP for server-side logic and PDO with MySQL for persistent data. It includes role-based access, prepared SQL statements, password hashing, CSRF protection and a safe custom code interpreter.</p></div></section>
+<?php require base_path('partials/footer.php'); ?>
