@@ -2,49 +2,31 @@
 require_once __DIR__ . '/app/bootstrap.php';
 require_auth();
 $user = current_user();
-$courses = Learning::courses();
-$selectedId = request_int('course');
+if (is_post()) {
+    verify_csrf();
+    $courseId = request_int('course_id');
+    $course = Learning::course($courseId);
+    if (!$course) { flash('error', 'The selected learning path is not available.'); redirect('courses.php'); }
+    Learning::enroll((int)$user['id'], $courseId);
+    flash('success', 'You are enrolled in ' . $course['title'] . '.');
+    redirect('course.php?course=' . urlencode($course['slug']));
+}
+$courses = Learning::courses((int)$user['id']);
 $pageTitle = 'Learning paths';
-$bodyClass = 'app-page';
+$bodyClass = 'courses-page';
 require base_path('partials/header.php');
 ?>
-<section class="page-hero page-hero-lessons">
-    <div class="container"><span class="eyebrow light">Learning paths</span><h1>Build strong programming foundations</h1><p>Move from logical thinking to written code through guided, practical activities.</p></div>
-</section>
-<section class="section">
-    <div class="container">
-        <div class="course-grid">
-            <?php foreach ($courses as $course): ?>
-            <?php
-                $lessons = Learning::lessonsForCourse((int) $course['id'], (int) $user['id']);
-                $completedCount = count(array_filter($lessons, fn(array $lesson): bool => $lesson['progress_status'] === 'completed'));
-                $percent = count($lessons) ? (int) round(($completedCount / count($lessons)) * 100) : 0;
-            ?>
-            <article class="course-card large-course-card <?= $selectedId === (int) $course['id'] ? 'selected' : '' ?>" style="--course-accent: <?= e($course['colour']) ?>">
-                <div class="course-top"><span class="course-icon large" aria-hidden="true"><?= e($course['icon']) ?></span><span class="level-pill"><?= e($course['level']) ?></span></div>
-                <h2><?= e($course['title']) ?></h2><p><?= e($course['description']) ?></p>
-                <div class="course-meta"><span><?= (int) $course['lesson_count'] ?> lessons</span><span><?= e($course['estimated_time']) ?></span></div>
-                <div class="progress-label"><span>Your progress</span><strong><?= $percent ?>%</strong></div><progress value="<?= $percent ?>" max="100"><?= $percent ?>%</progress>
-                <a class="button button-full" href="#course-<?= (int) $course['id'] ?>">View lessons</a>
-            </article>
-            <?php endforeach; ?>
-        </div>
-
-        <?php foreach ($courses as $course): ?>
-        <?php $lessons = Learning::lessonsForCourse((int) $course['id'], (int) $user['id']); ?>
-        <section class="lesson-path" id="course-<?= (int) $course['id'] ?>">
-            <div class="lesson-path-heading"><div class="course-icon" style="--course-accent: <?= e($course['colour']) ?>" aria-hidden="true"><?= e($course['icon']) ?></div><div><span class="eyebrow"><?= e($course['level']) ?> path</span><h2><?= e($course['title']) ?></h2><p><?= e($course['short_description']) ?></p></div></div>
-            <div class="lesson-list">
-                <?php foreach ($lessons as $index => $lesson): ?>
-                <article class="lesson-row <?= e($lesson['progress_status']) ?>">
-                    <div class="lesson-number" aria-hidden="true"><?= $lesson['progress_status'] === 'completed' ? '✓' : $index + 1 ?></div>
-                    <div class="lesson-row-copy"><div class="lesson-title-row"><h3><?= e($lesson['title']) ?></h3><span class="difficulty <?= e($lesson['difficulty']) ?>"><?= e(ucfirst($lesson['difficulty'])) ?></span></div><p><?= e($lesson['summary']) ?></p><div class="lesson-meta"><span>⏱ <?= (int) $lesson['duration_minutes'] ?> min</span><span>🧠 <?= e($lesson['concepts']) ?></span><?php if ((int) $lesson['best_score'] > 0): ?><span>⭐ <?= (int) $lesson['best_score'] ?>%</span><?php endif; ?></div></div>
-                    <a class="button <?= $lesson['progress_status'] === 'completed' ? 'button-secondary' : '' ?>" href="<?= e(url('lesson.php?id=' . (int) $lesson['id'])) ?>"><?= $lesson['progress_status'] === 'completed' ? 'Review' : ($lesson['progress_status'] === 'in_progress' ? 'Continue' : 'Start') ?></a>
-                </article>
-                <?php endforeach; ?>
-            </div>
-        </section>
-        <?php endforeach; ?>
+<section class="workspace-section page-intro"><div><span class="eyebrow">Structured curriculum</span><h1>Learning paths</h1><p>Choose a path by outcome, level and time. Enrolment makes the ordered lessons available on your dashboard.</p></div><div class="page-intro-actions"><a class="button button-secondary" href="<?= e(url('progress.php')) ?>"><?= icon('chart') ?>View progress</a></div></section>
+<div class="filter-toolbar"><div class="search-field"><?= icon('search') ?><label class="sr-only" for="course-search">Search learning paths</label><input id="course-search" data-filter-input data-filter-target=".learning-path-card" aria-label="Search learning paths"></div><div class="filter-chips" data-filter-chips><button class="is-active" type="button" data-filter="all">All paths</button><button type="button" data-filter="enrolled">Enrolled</button><button type="button" data-filter="available">Available</button></div></div>
+<section class="learning-path-grid">
+<?php foreach ($courses as $course): $percent=(int)$course['lesson_count']?round(((int)$course['completed_count']/(int)$course['lesson_count'])*100):0; ?>
+<article class="learning-path-card" data-filter-item data-state="<?= (int)$course['is_enrolled'] ? 'enrolled' : 'available' ?>" style="--course:<?= e($course['colour']) ?>">
+    <div class="path-card-banner"><span class="course-icon large"><?= icon($course['icon']) ?></span><span class="status-badge <?= (int)$course['is_enrolled']?'success':'neutral' ?>"><?= (int)$course['is_enrolled']?'Enrolled':'Available' ?></span></div>
+    <div class="path-card-body"><div class="inline-meta"><span><?= e($course['level']) ?></span><span><?= e($course['audience']) ?></span></div><h2><?= e($course['title']) ?></h2><p><?= e($course['short_description']) ?></p><div class="path-facts"><span><?= icon('book-open') ?><b><?= (int)$course['lesson_count'] ?></b> lessons</span><span><?= icon('clock') ?><b><?= e($course['estimated_time']) ?></b></span></div>
+    <?php if ((int)$course['is_enrolled']): ?><div class="path-progress"><span><b><?= (int)$course['completed_count'] ?></b> of <?= (int)$course['lesson_count'] ?> lessons</span><strong><?= (int)$percent ?>%</strong><div class="progress-track"><i style="width:<?= (int)$percent ?>%"></i></div></div><?php endif; ?>
     </div>
+    <div class="path-card-actions"><a class="button <?= (int)$course['is_enrolled']?'':'button-secondary' ?>" href="<?= e(url('course.php?course='.urlencode($course['slug']))) ?>"><?= (int)$course['is_enrolled']?'Continue path':'View path' ?><?= icon('arrow-right') ?></a><?php if (!(int)$course['is_enrolled']): ?><form method="post"><?= csrf_field() ?><input type="hidden" name="course_id" value="<?= (int)$course['id'] ?>"><button class="text-button" type="submit">Enrol now</button></form><?php endif; ?></div>
+</article>
+<?php endforeach; ?>
 </section>
 <?php require base_path('partials/footer.php'); ?>

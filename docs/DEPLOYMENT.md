@@ -1,26 +1,58 @@
-# Deployment guide
+# CodeMwana deployment guide
 
-## Option A: XAMPP demonstration
+## XAMPP or local Apache
 
-Follow the root `README.md` installation steps. This is the fastest way to demonstrate the app during marking.
+1. Copy the project into the web root, for example `C:\xampp\htdocs\CodeMwana`.
+2. Start Apache and MySQL.
+3. Create an empty `codemwana` MySQL database using `utf8mb4_unicode_ci`.
+4. Copy `.env.example` to `.env` and enter the correct URL and database credentials.
+5. Open `/CodeMwana/setup.php`.
+6. Provide the organisation name and real first-administrator credentials.
+7. Complete installation and confirm that the administrator can sign in.
+8. Remove or rename `setup.php`.
 
-## Option B: Hostinger or cPanel shared hosting
+## cPanel, Hostinger or compatible shared hosting
 
-1. Create a MySQL database and database user in the hosting control panel.
-2. Upload all project files into a subdirectory such as `public_html/codemwana`.
-3. Copy `.env.example` to `.env` and enter the hosted URL and database credentials.
-4. Ensure PHP 8.1 or newer and the PDO MySQL extension are enabled.
-5. Open `/codemwana/setup.php` once to create and seed the tables.
-6. Delete `setup.php` and restrict access to `.env` and SQL files.
-7. Enable HTTPS and test registration, login, quiz submission and project saving.
+1. Create a MySQL database and a dedicated database user.
+2. Grant that user only the privileges required for the CodeMwana database.
+3. Upload the project into `public_html/codemwana` or the intended document root.
+4. Copy `.env.example` to `.env` and configure the HTTPS URL, environment and database credentials.
+5. Select PHP 8.1 or newer and enable PDO MySQL.
+6. Open `/codemwana/setup.php`, create the first administrator and install the curriculum.
+7. Remove `setup.php` immediately after a successful installation.
+8. Sign in and verify learner registration, enrolment, assessment submission, project saving and staff operations.
+
+## Required production values
+
+```env
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://your-domain.example/codemwana
+DB_DRIVER=mysql
+```
+
+Use the host-provided database host, port, name, username and password.
 
 ## Production checklist
 
-- Replace demonstration passwords.
-- Set `APP_ENV=production` and `APP_DEBUG=false`.
-- Use a unique MySQL user with access only to the CodeMwana database.
-- Keep `.env` outside public access where the host permits it.
-- Back up the database before content updates.
-- Test at 320 px, 768 px and desktop widths.
-- Validate representative pages using the W3C HTML and CSS validators.
-- Publish a formal privacy notice approved by the institution before enrolling real children.
+- Use HTTPS on every page.
+- Keep `.env` inaccessible to the public web.
+- Remove `setup.php` after installation.
+- Use a dedicated least-privilege database user.
+- Create individual teacher and administrator accounts; do not share credentials.
+- Keep registration closed until the platform is ready for learners.
+- Review curriculum and assessment publication status before launch.
+- Test role restrictions for learner, teacher and administrator accounts.
+- Schedule database and uploaded-code backups.
+- Test at phone, tablet and desktop widths.
+- Publish institution-approved privacy, retention and account-deletion procedures.
+- Review PHP and web-server logs without exposing them publicly.
+
+## Updating the application
+
+1. Back up the database and current files.
+2. Deploy changed source files.
+3. Compare schema files before applying database changes.
+4. Run `php tests/smoke.php`.
+5. Test critical operations using a non-production learner account.
+6. Clear the browser service-worker cache when static asset versions change.

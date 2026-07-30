@@ -22,11 +22,12 @@ final class Database
         if ($driver === 'sqlite') {
             $path = (string) config('database.sqlite.path');
             $directory = dirname($path);
-            if (!is_dir($directory)) {
-                mkdir($directory, 0775, true);
+            if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) {
+                throw new RuntimeException('The SQLite storage directory could not be created.');
             }
             self::$connection = new PDO('sqlite:' . $path, null, null, $options);
             self::$connection->exec('PRAGMA foreign_keys = ON');
+            self::$connection->exec('PRAGMA busy_timeout = 5000');
             return self::$connection;
         }
 
@@ -40,6 +41,11 @@ final class Database
         );
         self::$connection = new PDO($dsn, $mysql['username'], $mysql['password'], $options);
         return self::$connection;
+    }
+
+    public static function driver(): string
+    {
+        return (string) self::connection()->getAttribute(PDO::ATTR_DRIVER_NAME);
     }
 
     public static function query(string $sql, array $params = []): PDOStatement
@@ -58,6 +64,12 @@ final class Database
     public static function fetchAll(string $sql, array $params = []): array
     {
         return self::query($sql, $params)->fetchAll();
+    }
+
+    public static function scalar(string $sql, array $params = [], mixed $default = 0): mixed
+    {
+        $value = self::query($sql, $params)->fetchColumn();
+        return $value === false ? $default : $value;
     }
 
     public static function insert(string $sql, array $params = []): int
@@ -80,5 +92,22 @@ final class Database
             }
             throw $exception;
         }
+    }
+
+    public static function tableExists(string $table): bool
+    {
+        try {
+            if (self::driver() === 'sqlite') {
+                return (bool) self::fetch("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?", [$table]);
+            }
+            return (bool) self::fetch('SHOW TABLES LIKE ?', [$table]);
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    public static function reset(): void
+    {
+        self::$connection = null;
     }
 }

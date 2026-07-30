@@ -1,68 +1,94 @@
 <?php
-/** @var string $pageTitle */
 $pageTitle = $pageTitle ?? '';
 $bodyClass = $bodyClass ?? '';
+$pageDescription = $pageDescription ?? setting('site_description', 'Programming learning platform for children.');
 $user = current_user();
-$current = basename($_SERVER['PHP_SELF'] ?? '');
+$siteName = (string) setting('site_name', 'CodeMwana');
+$tagline = (string) setting('site_tagline', 'Learn. Build. Shine.');
+$currentPath = str_replace('\\', '/', $_SERVER['PHP_SELF'] ?? '');
+$isRootDashboard = basename($currentPath) === 'dashboard.php' && !str_contains($currentPath, '/teacher/') && !str_contains($currentPath, '/admin/');
 ?>
 <!doctype html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#6546d7">
-    <meta name="description" content="CodeMwana is a child-friendly web application for learning basic programming skills and concepts.">
+    <meta name="theme-color" content="#5B4BDB">
+    <meta name="description" content="<?= e($pageDescription) ?>">
     <title><?= e(page_title($pageTitle)) ?></title>
     <link rel="manifest" href="<?= e(url('manifest.json')) ?>">
     <link rel="icon" href="<?= e(asset('img/favicon.svg')) ?>" type="image/svg+xml">
     <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
 </head>
-<body class="<?= e($bodyClass) ?>">
+<body class="<?= e(trim(($user ? 'authenticated ' : 'public ') . $bodyClass)) ?>">
 <a class="skip-link" href="#main-content">Skip to main content</a>
-<header class="site-header" data-header>
-    <div class="container header-inner">
-        <a class="brand" href="<?= e(url('index.php')) ?>" aria-label="CodeMwana home">
-            <span class="brand-mark" aria-hidden="true">&lt;/&gt;</span>
-            <span><strong>CodeMwana</strong><small>Learn. Build. Shine.</small></span>
-        </a>
-        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="main-nav" data-nav-toggle>
-            <span class="sr-only">Open navigation</span>
-            <span></span><span></span><span></span>
-        </button>
-        <nav class="main-nav" id="main-nav" aria-label="Main navigation" data-nav>
-            <?php if ($user): ?>
-                <a class="<?= $current === 'dashboard.php' ? 'active' : '' ?>" href="<?= e(url('dashboard.php')) ?>">Dashboard</a>
-                <a class="<?= $current === 'courses.php' || $current === 'lesson.php' ? 'active' : '' ?>" href="<?= e(url('courses.php')) ?>">Lessons</a>
-                <a class="<?= $current === 'playground.php' ? 'active' : '' ?>" href="<?= e(url('playground.php')) ?>">Code Lab</a>
-                <a class="<?= $current === 'progress.php' ? 'active' : '' ?>" href="<?= e(url('progress.php')) ?>">Progress</a>
-                <a class="<?= $current === 'leaderboard.php' ? 'active' : '' ?>" href="<?= e(url('leaderboard.php')) ?>">Leaderboard</a>
-                <?php if (in_array($user['role'], ['teacher', 'admin'], true)): ?>
-                    <a href="<?= e(url('teacher/dashboard.php')) ?>">Teacher</a>
-                <?php endif; ?>
-                <?php if ($user['role'] === 'admin'): ?>
-                    <a href="<?= e(url('admin/dashboard.php')) ?>">Admin</a>
-                <?php endif; ?>
-                <div class="user-menu">
-                    <a class="user-chip" href="<?= e(url('profile.php')) ?>">
-                        <span class="avatar" aria-hidden="true"><?= e(strtoupper(substr($user['name'], 0, 1))) ?></span>
-                        <span><?= e($user['name']) ?></span>
-                    </a>
-                    <a class="button button-small button-ghost" href="<?= e(url('logout.php')) ?>">Sign out</a>
-                </div>
-            <?php else: ?>
-                <a href="<?= e(url('index.php#features')) ?>">Features</a>
-                <a href="<?= e(url('index.php#how-it-works')) ?>">How it works</a>
-                <a href="<?= e(url('index.php#safety')) ?>">Safety</a>
-                <a class="button button-small button-ghost" href="<?= e(url('login.php')) ?>">Sign in</a>
-                <a class="button button-small" href="<?= e(url('register.php')) ?>">Start learning</a>
+<?php if ($user): ?>
+<div class="app-shell" data-app-shell>
+    <aside class="app-sidebar" aria-label="Application navigation" data-sidebar>
+        <div class="sidebar-head">
+            <a class="brand" href="<?= e(url('dashboard.php')) ?>">
+                <span class="brand-mark">CM</span>
+                <span><strong><?= e($siteName) ?></strong><small><?= e($tagline) ?></small></span>
+            </a>
+            <button class="icon-button sidebar-close" type="button" data-sidebar-close aria-label="Close navigation"><?= icon('x') ?></button>
+        </div>
+        <nav class="sidebar-nav">
+            <span class="nav-label">Workspace</span>
+            <a class="<?= $isRootDashboard ? 'is-active' : '' ?>" href="<?= e(url('dashboard.php')) ?>"><?= icon('home') ?><span>Overview</span></a>
+            <a class="<?= active_nav(['courses.php','course.php','lesson.php','quiz.php']) ?>" href="<?= e(url('courses.php')) ?>"><?= icon('book-open') ?><span>Learning paths</span></a>
+            <a class="<?= active_nav('playground.php') ?>" href="<?= e(url('playground.php')) ?>"><?= icon('terminal') ?><span>Code Lab</span></a>
+            <a class="<?= active_nav('projects.php') ?>" href="<?= e(url('projects.php')) ?>"><?= icon('folder-code') ?><span>My projects</span></a>
+            <a class="<?= active_nav('progress.php') ?>" href="<?= e(url('progress.php')) ?>"><?= icon('chart') ?><span>Progress</span></a>
+            <?php if ((string) setting('leaderboard_enabled', '1') === '1'): ?><a class="<?= active_nav('leaderboard.php') ?>" href="<?= e(url('leaderboard.php')) ?>"><?= icon('trophy') ?><span>Leaderboard</span></a><?php endif; ?>
+            <?php if (in_array($user['role'], ['teacher','admin'], true)): ?>
+                <span class="nav-label">Teaching</span>
+                <a class="<?= str_contains($currentPath, '/teacher/') ? 'is-active' : '' ?>" href="<?= e(url('teacher/dashboard.php')) ?>"><?= icon('users') ?><span>Teacher centre</span></a>
             <?php endif; ?>
+            <?php if ($user['role'] === 'admin'): ?>
+                <span class="nav-label">Administration</span>
+                <a class="<?= str_contains($currentPath, '/admin/') ? 'is-active' : '' ?>" href="<?= e(url('admin/dashboard.php')) ?>"><?= icon('settings') ?><span>Platform admin</span></a>
+            <?php endif; ?>
+        </nav>
+        <div class="sidebar-user">
+            <a href="<?= e(url('profile.php')) ?>" class="sidebar-user-card">
+                <span class="avatar"><?= e(initials($user['name'])) ?></span>
+                <span><strong><?= e($user['name']) ?></strong><small><?= e(ucfirst($user['role'])) ?></small></span>
+                <?= icon('arrow-right') ?>
+            </a>
+            <form method="post" action="<?= e(url('logout.php')) ?>">
+                <?= csrf_field() ?>
+                <button class="sidebar-signout" type="submit"><?= icon('log-out') ?><span>Sign out</span></button>
+            </form>
+        </div>
+    </aside>
+    <div class="sidebar-overlay" data-sidebar-overlay></div>
+    <div class="app-main">
+        <header class="app-topbar">
+            <button class="icon-button mobile-menu" type="button" data-sidebar-open aria-label="Open navigation"><?= icon('menu') ?></button>
+            <div class="topbar-context"><span><?= e($pageTitle ?: 'Workspace') ?></span><small><?= e(date('l, j F Y')) ?></small></div>
+            <div class="topbar-actions">
+                <a class="icon-button" href="<?= e(url('dashboard.php#announcements')) ?>" aria-label="Announcements"><?= icon('bell') ?></a>
+                <a class="topbar-profile" href="<?= e(url('profile.php')) ?>"><span class="avatar small"><?= e(initials($user['name'])) ?></span><span><strong><?= e($user['name']) ?></strong><small><?= e($user['school_name'] ?: ucfirst($user['role'])) ?></small></span></a>
+            </div>
+        </header>
+<?php else: ?>
+<header class="public-header" data-header>
+    <div class="container public-header-inner">
+        <a class="brand" href="<?= e(url('index.php')) ?>">
+            <span class="brand-mark">CM</span>
+            <span><strong><?= e($siteName) ?></strong><small><?= e($tagline) ?></small></span>
+        </a>
+        <button class="icon-button public-menu" type="button" data-nav-toggle aria-expanded="false" aria-controls="public-nav" aria-label="Open navigation"><?= icon('menu') ?></button>
+        <nav class="public-nav" id="public-nav" data-nav>
+            <a href="<?= e(url('index.php#learning')) ?>">Learning paths</a>
+            <a href="<?= e(url('index.php#experience')) ?>">Experience</a>
+            <a href="<?= e(url('about.php')) ?>">About</a>
+            <a class="button button-secondary button-small" href="<?= e(url('login.php')) ?>">Sign in</a>
+            <?php if ((string) setting('registration_open', '1') === '1'): ?><a class="button button-small" href="<?= e(url('register.php')) ?>">Create account</a><?php endif; ?>
         </nav>
     </div>
 </header>
-<?php if ($message = flash('success')): ?>
-    <div class="toast toast-success" role="status" data-toast><?= e($message) ?></div>
 <?php endif; ?>
-<?php if ($message = flash('error')): ?>
-    <div class="toast toast-error" role="alert" data-toast><?= e($message) ?></div>
-<?php endif; ?>
-<main id="main-content">
+<?php if ($message = flash('success')): ?><div class="toast toast-success" role="status" data-toast><?= icon('check-circle') ?><span><?= e($message) ?></span></div><?php endif; ?>
+<?php if ($message = flash('error')): ?><div class="toast toast-error" role="alert" data-toast><?= icon('alert-circle') ?><span><?= e($message) ?></span></div><?php endif; ?>
+<main id="main-content" class="<?= $user ? 'workspace-content' : 'public-content' ?>">

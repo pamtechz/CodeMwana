@@ -25,8 +25,9 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 require_once __DIR__ . '/Database.php';
-require_once __DIR__ . '/Auth.php';
+require_once __DIR__ . '/Settings.php';
 require_once __DIR__ . '/Learning.php';
+require_once __DIR__ . '/Auth.php';
 
 if ((bool) config('app.debug', false)) {
     error_reporting(E_ALL);

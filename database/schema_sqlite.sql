@@ -1,128 +1,208 @@
-PRAGMA foreign_keys = ON;
+CREATE TABLE IF NOT EXISTS schema_meta (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    schema_version VARCHAR(20) NOT NULL,
+    installed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    username TEXT NOT NULL UNIQUE,
-    email TEXT NOT NULL UNIQUE,
-    password TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'learner' CHECK(role IN ('learner','teacher','admin')),
-    age_group TEXT NULL,
-    avatar TEXT NULL,
-    points INTEGER NOT NULL DEFAULT 0,
-    streak_days INTEGER NOT NULL DEFAULT 0,
-    status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','disabled')),
-    last_login_at TEXT NULL,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    name VARCHAR(100) NOT NULL,
+    username VARCHAR(40) NOT NULL UNIQUE,
+    email VARCHAR(160) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    role TEXT NOT NULL DEFAULT 'learner',
+    age_group VARCHAR(20) NULL,
+    school_name VARCHAR(140) NOT NULL DEFAULT '',
+    avatar VARCHAR(120) NULL,
+    points INT NOT NULL DEFAULT 0,
+    streak_days INT NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'active',
+    last_login_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_users_role_status ON users(role, status);
+
+CREATE TABLE IF NOT EXISTS site_settings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    setting_key VARCHAR(100) NOT NULL UNIQUE,
+    setting_value TEXT NOT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS home_features (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title VARCHAR(100) NOT NULL,
+    description VARCHAR(300) NOT NULL,
+    icon VARCHAR(40) NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    is_active INTEGER NOT NULL DEFAULT 1
+);
+
 CREATE TABLE IF NOT EXISTS courses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    slug TEXT NOT NULL UNIQUE,
-    short_description TEXT NOT NULL,
+    title VARCHAR(140) NOT NULL,
+    slug VARCHAR(150) NOT NULL UNIQUE,
+    short_description VARCHAR(300) NOT NULL,
     description TEXT NOT NULL,
-    icon TEXT NOT NULL DEFAULT '💡',
-    colour TEXT NOT NULL DEFAULT '#6546d7',
-    level TEXT NOT NULL DEFAULT 'Beginner',
-    estimated_time TEXT NOT NULL DEFAULT '1 hour',
-    sort_order INTEGER NOT NULL DEFAULT 0,
+    icon VARCHAR(40) NOT NULL DEFAULT 'code',
+    colour VARCHAR(20) NOT NULL DEFAULT '#6C5CE7',
+    level VARCHAR(50) NOT NULL DEFAULT 'Beginner',
+    estimated_time VARCHAR(50) NOT NULL DEFAULT '2 hours',
+    audience VARCHAR(80) NOT NULL DEFAULT 'Ages 9–16',
+    outcomes TEXT NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
     is_published INTEGER NOT NULL DEFAULT 1,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
 CREATE TABLE IF NOT EXISTS lessons (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     course_id INTEGER NOT NULL,
-    title TEXT NOT NULL,
-    slug TEXT NOT NULL UNIQUE,
-    summary TEXT NOT NULL,
-    learning_objective TEXT NOT NULL,
-    concepts TEXT NOT NULL,
-    vocabulary TEXT NOT NULL,
+    title VARCHAR(160) NOT NULL,
+    slug VARCHAR(170) NOT NULL UNIQUE,
+    summary VARCHAR(320) NOT NULL,
+    learning_objective VARCHAR(320) NOT NULL,
+    concepts VARCHAR(220) NOT NULL,
+    vocabulary VARCHAR(320) NOT NULL,
     content_html TEXT NOT NULL,
     challenge_text TEXT NOT NULL,
     starter_code TEXT NULL,
     expected_output TEXT NULL,
-    icon TEXT NOT NULL DEFAULT '💡',
-    difficulty TEXT NOT NULL DEFAULT 'beginner' CHECK(difficulty IN ('beginner','intermediate')),
-    duration_minutes INTEGER NOT NULL DEFAULT 15,
-    sort_order INTEGER NOT NULL DEFAULT 0,
+    teacher_note TEXT NOT NULL,
+    icon VARCHAR(40) NOT NULL DEFAULT 'book-open',
+    difficulty TEXT NOT NULL DEFAULT 'beginner',
+    duration_minutes INT NOT NULL DEFAULT 15,
+    sort_order INT NOT NULL DEFAULT 0,
     is_published INTEGER NOT NULL DEFAULT 1,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_lessons_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
 );
-CREATE INDEX IF NOT EXISTS idx_lessons_course_order ON lessons(course_id, sort_order);
+
 CREATE TABLE IF NOT EXISTS quiz_questions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     lesson_id INTEGER NOT NULL,
     question TEXT NOT NULL,
-    option_a TEXT NOT NULL,
-    option_b TEXT NOT NULL,
-    option_c TEXT NOT NULL,
-    option_d TEXT NOT NULL,
-    correct_option TEXT NOT NULL,
+    option_a VARCHAR(300) NOT NULL,
+    option_b VARCHAR(300) NOT NULL,
+    option_c VARCHAR(300) NOT NULL,
+    option_d VARCHAR(300) NOT NULL,
+    correct_option CHAR(1) NOT NULL,
     explanation TEXT NOT NULL,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE
+    sort_order INT NOT NULL DEFAULT 0,
+    CONSTRAINT fk_questions_lesson FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS course_enrollments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    course_id INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    enrolled_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at DATETIME NULL,
+    CONSTRAINT fk_enrolment_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_enrolment_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+    UNIQUE (user_id, course_id)
+);
+
 CREATE TABLE IF NOT EXISTS progress (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     lesson_id INTEGER NOT NULL,
-    status TEXT NOT NULL DEFAULT 'not_started' CHECK(status IN ('not_started','in_progress','completed')),
-    best_score INTEGER NOT NULL DEFAULT 0,
-    completed_at TEXT NULL,
-    last_accessed_at TEXT NULL,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE,
-    UNIQUE(user_id, lesson_id)
+    status TEXT NOT NULL DEFAULT 'not_started',
+    best_score INT NOT NULL DEFAULT 0,
+    completed_at DATETIME NULL,
+    last_accessed_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_progress_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_progress_lesson FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE,
+    UNIQUE (user_id, lesson_id)
 );
+
 CREATE TABLE IF NOT EXISTS quiz_attempts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     lesson_id INTEGER NOT NULL,
-    score INTEGER NOT NULL,
+    score INT NOT NULL,
     answers_json TEXT NOT NULL,
     passed INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_attempt_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_attempt_lesson FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE
 );
+
 CREATE TABLE IF NOT EXISTS projects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    title TEXT NOT NULL,
-    language TEXT NOT NULL DEFAULT 'mwanacode',
+    title VARCHAR(120) NOT NULL,
+    language VARCHAR(30) NOT NULL DEFAULT 'mwanacode',
     code TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_projects_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS project_versions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL,
+    title VARCHAR(120) NOT NULL,
+    code TEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_versions_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS badges (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    code TEXT NOT NULL UNIQUE,
-    name TEXT NOT NULL,
-    description TEXT NOT NULL,
-    icon TEXT NOT NULL,
-    points INTEGER NOT NULL DEFAULT 0
+    code VARCHAR(50) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    description VARCHAR(240) NOT NULL,
+    icon VARCHAR(40) NOT NULL,
+    points INT NOT NULL DEFAULT 0,
+    sort_order INT NOT NULL DEFAULT 0
 );
+
 CREATE TABLE IF NOT EXISTS user_badges (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     badge_id INTEGER NOT NULL,
-    awarded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (badge_id) REFERENCES badges(id) ON DELETE CASCADE,
-    UNIQUE(user_id, badge_id)
+    awarded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user_badges_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_user_badges_badge FOREIGN KEY (badge_id) REFERENCES badges(id) ON DELETE CASCADE,
+    UNIQUE (user_id, badge_id)
 );
+
+CREATE TABLE IF NOT EXISTS announcements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    author_id INTEGER NOT NULL,
+    title VARCHAR(160) NOT NULL,
+    body TEXT NOT NULL,
+    audience TEXT NOT NULL DEFAULT 'all',
+    status TEXT NOT NULL DEFAULT 'published',
+    is_pinned INTEGER NOT NULL DEFAULT 0,
+    published_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_announcements_author FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS login_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    identifier VARCHAR(160) NOT NULL,
+    ip_hash VARCHAR(64) NOT NULL,
+    was_successful INTEGER NOT NULL DEFAULT 0,
+    attempted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS activity_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NULL,
-    action TEXT NOT NULL,
+    action VARCHAR(100) NOT NULL,
     details_json TEXT NULL,
-    ip_hash TEXT NULL,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    ip_hash VARCHAR(64) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_activity_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );

@@ -1,12 +1,12 @@
 {
-  "name": "CodeMwana - Learn Programming",
+  "name": "CodeMwana Learning Platform",
   "short_name": "CodeMwana",
-  "description": "A child-friendly web application for learning basic programming skills and concepts.",
+  "description": "A responsive, database-backed programming learning platform for children.",
   "start_url": "./index.php",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f8f7fc",
-  "theme_color": "#6546d7",
+  "background_color": "#f6f7fb",
+  "theme_color": "#5b4bdb",
   "icons": [
     {"src": "assets/img/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}
   ]

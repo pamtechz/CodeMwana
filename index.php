@@ -1,142 +1,86 @@
 <?php
 require_once __DIR__ . '/app/bootstrap.php';
-if (Auth::check()) {
-    redirect('dashboard.php');
-}
-$pageTitle = 'Programming made playful';
-$bodyClass = 'home-page';
+if (!Database::tableExists('users')) redirect('setup.php');
+if (Auth::check()) redirect('dashboard.php');
+$stats = Learning::publicStatistics();
+$courses = Learning::courses();
+$features = Learning::homeFeatures();
+$announcements = Learning::announcements(2);
+$registrationOpen = (string) setting('registration_open', '1') === '1';
+$previewCourse = $courses[0] ?? null;
+$previewLessons = $previewCourse ? Learning::lessonsForCourse((int) $previewCourse['id']) : [];
+$previewLesson = $previewLessons[0] ?? null;
+$pageTitle = '';
+$bodyClass = 'landing-page';
 require base_path('partials/header.php');
 ?>
-<section class="hero">
-    <div class="hero-orb hero-orb-one" aria-hidden="true"></div>
-    <div class="hero-orb hero-orb-two" aria-hidden="true"></div>
+<section class="hero-section">
     <div class="container hero-grid">
         <div class="hero-copy">
-            <span class="eyebrow"><span aria-hidden="true">★</span> Made for curious young minds</span>
-            <h1>Programming becomes easier when children can <span>see ideas come alive.</span></h1>
-            <p>CodeMwana turns algorithms, variables, decisions and loops into short stories, visual challenges and safe coding experiments.</p>
+            <span class="eyebrow"><?= e(setting('hero_eyebrow')) ?></span>
+            <h1><?= e(setting('hero_title')) ?></h1>
+            <p><?= e(setting('hero_text')) ?></p>
             <div class="hero-actions">
-                <a class="button button-large" href="<?= e(url('register.php')) ?>">Create a free learner account <span aria-hidden="true">→</span></a>
-                <a class="button button-large button-secondary" href="<?= e(url('login.php')) ?>">I already have an account</a>
+                <?php if ($registrationOpen): ?><a class="button button-large" href="<?= e(url('register.php')) ?>"><?= e(setting('primary_action_text')) ?><?= icon('arrow-right') ?></a><?php endif; ?>
+                <a class="button button-large button-secondary" href="#learning"><?= e(setting('secondary_action_text')) ?></a>
             </div>
-            <div class="trust-row" aria-label="Key benefits">
-                <span><strong>No adverts</strong><small>Focused learning</small></span>
-                <span><strong>Low data</strong><small>Works on mobile</small></span>
-                <span><strong>Safe code</strong><small>No unrestricted execution</small></span>
-            </div>
+            <div class="hero-trust"><span><?= icon('shield-check') ?> Safe interpreter</span><span><?= icon('wifi') ?> Low-bandwidth friendly</span><span><?= icon('school') ?> Built for guided learning</span></div>
         </div>
-        <div class="hero-visual" aria-label="Example CodeMwana coding activity">
-            <div class="code-card floating-card">
-                <div class="code-card-top">
-                    <span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-                    <strong>My first program</strong>
-                    <span class="code-status">Ready</span>
+        <div class="hero-product" aria-label="CodeMwana curriculum preview">
+            <div class="browser-frame">
+                <div class="browser-bar"><span></span><span></span><span></span><small><?= e(setting('site_name', 'CodeMwana')) ?> curriculum workspace</small></div>
+                <div class="preview-shell">
+                    <aside><div class="preview-brand">CM</div><?php foreach (['home','book-open','terminal','chart'] as $item): ?><i><?= icon($item) ?></i><?php endforeach; ?></aside>
+                    <div class="preview-main">
+                        <div class="preview-top"><div><small>Live curriculum preview</small><strong><?= e($previewCourse['title'] ?? 'Learning paths are ready') ?></strong></div><span class="avatar small"><?= e($previewCourse ? initials($previewCourse['title']) : 'CM') ?></span></div>
+                        <div class="preview-progress"><div><span>Published learning path</span><strong><?= e($previewCourse['title'] ?? setting('site_name', 'CodeMwana')) ?></strong><small><?= $previewCourse ? (int) $previewCourse['lesson_count'] . ' database-backed lessons' : 'Curriculum content is managed by administrators' ?></small></div><div class="progress-ring"><b><?= $previewCourse ? (int) $previewCourse['lesson_count'] : 0 ?></b></div></div>
+                        <div class="preview-cards"><article><span><?= icon($previewLesson['icon'] ?? 'terminal') ?></span><strong><?= e($previewLesson['title'] ?? 'Create your first lesson') ?></strong><small><?= $previewLesson ? (int) $previewLesson['duration_minutes'] . ' minutes' : 'Managed from the curriculum centre' ?></small></article><article><span><?= icon('route') ?></span><strong><?= e($previewCourse['level'] ?? 'Beginner') ?></strong><small><?= e($previewCourse['audience'] ?? 'Structured learning') ?></small></article></div>
+                        <div class="preview-code"><code><?= $previewLesson && trim((string) $previewLesson['starter_code']) !== '' ? nl2br(e($previewLesson['starter_code'])) : '<b>SAY</b> <em>"Welcome to CodeMwana"</em>' ?></code><button type="button"><?= icon('play') ?> Preview</button></div>
+                    </div>
                 </div>
-                <pre><code><span class="code-keyword">SAY</span> <span class="code-string">"Hello, Zambia!"</span>
-<span class="code-keyword">SET</span> stars = <span class="code-number">3</span>
-<span class="code-keyword">REPEAT</span> stars
-  <span class="code-keyword">SAY</span> <span class="code-string">"I can code!"</span>
-<span class="code-keyword">END</span></code></pre>
-                <div class="code-output"><span aria-hidden="true">▶</span> Hello, Zambia!<br>I can code!<br>I can code!<br>I can code!</div>
             </div>
-            <div class="mini-card mini-card-left"><span aria-hidden="true">🏅</span><strong>New badge!</strong><small>First Steps</small></div>
-            <div class="mini-card mini-card-right"><span aria-hidden="true">🔥</span><strong>3-day streak</strong><small>Keep learning</small></div>
+            <div class="floating-card floating-one"><?= icon('blocks') ?><span><strong><?= number_format($stats['lessons']) ?> published lessons</strong><small>Loaded from the curriculum database</small></span></div>
+            <div class="floating-card floating-two"><?= icon('folder-code') ?><span><strong><?= number_format($stats['projects']) ?> learner projects</strong><small>Saved with version history</small></span></div>
         </div>
     </div>
 </section>
-
-<section class="section stats-strip" aria-label="Platform highlights">
-    <div class="container stats-grid">
-        <div><strong>3</strong><span>guided learning paths</span></div>
-        <div><strong>10+</strong><span>interactive activities</span></div>
-        <div><strong>100%</strong><span>responsive layout</span></div>
-        <div><strong>0</strong><span>public chats or adverts</span></div>
+<section class="platform-stats">
+    <div class="container stats-row">
+        <div><strong><?= number_format($stats['courses']) ?></strong><span>Learning paths</span></div>
+        <div><strong><?= number_format($stats['lessons']) ?></strong><span>Complete lessons</span></div>
+        <div><strong><?= number_format($stats['learners']) ?></strong><span>Registered learners</span></div>
+        <div><strong><?= number_format($stats['projects']) ?></strong><span>Programs saved</span></div>
     </div>
 </section>
-
-<section class="section" id="features">
+<section class="section" id="learning">
     <div class="container">
-        <div class="section-heading centered">
-            <span class="eyebrow">Learning by doing</span>
-            <h2>More than reading about code</h2>
-            <p>Each feature is designed to move a learner from understanding an idea to applying it independently.</p>
+        <div class="section-heading centered"><span class="eyebrow">Structured curriculum</span><h2>Start with thinking. Progress to creating.</h2><p>Each path has clear outcomes, ordered lessons, practical challenges and assessment questions stored in the platform database.</p></div>
+        <div class="course-showcase">
+            <?php foreach ($courses as $index => $course): ?>
+                <article class="public-course-card" style="--course:<?= e($course['colour']) ?>">
+                    <div class="course-card-top"><span class="course-icon"><?= icon($course['icon']) ?></span><span class="course-number"><?= str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT) ?></span></div>
+                    <span class="course-meta"><?= e($course['level']) ?> · <?= (int) $course['lesson_count'] ?> lessons</span>
+                    <h3><?= e($course['title']) ?></h3><p><?= e($course['short_description']) ?></p>
+                    <div class="course-footer"><span><?= icon('clock') ?><?= e($course['estimated_time']) ?></span><a href="<?= e(url($registrationOpen ? 'register.php' : 'login.php')) ?>"><?= $registrationOpen ? 'Begin path' : 'Sign in' ?><?= icon('arrow-right') ?></a></div>
+                </article>
+            <?php endforeach; ?>
         </div>
+    </div>
+</section>
+<section class="section section-soft" id="experience">
+    <div class="container">
+        <div class="section-heading split"><div><span class="eyebrow">Complete learning experience</span><h2>More than a collection of coding pages.</h2></div><p>CodeMwana combines curriculum, assessment, learner operations and teaching oversight in one responsive application.</p></div>
         <div class="feature-grid">
-            <article class="feature-card accent-purple">
-                <div class="feature-icon" aria-hidden="true">🧩</div>
-                <h3>Small, clear lessons</h3>
-                <p>Concepts are broken into short explanations, worked examples and one focused challenge at a time.</p>
-            </article>
-            <article class="feature-card accent-orange">
-                <div class="feature-icon" aria-hidden="true">💻</div>
-                <h3>Safe MwanaCode lab</h3>
-                <p>A purpose-built beginner language teaches sequence, variables, conditions and loops without running arbitrary scripts.</p>
-            </article>
-            <article class="feature-card accent-green">
-                <div class="feature-icon" aria-hidden="true">📈</div>
-                <h3>Progress that persists</h3>
-                <p>Lesson completion, quiz scores, saved projects, points and badges are stored in the database across sessions.</p>
-            </article>
-            <article class="feature-card accent-blue">
-                <div class="feature-icon" aria-hidden="true">👩🏾‍🏫</div>
-                <h3>Teacher overview</h3>
-                <p>Teachers can identify active learners, completion levels and areas where additional classroom support is needed.</p>
-            </article>
-            <article class="feature-card accent-pink">
-                <div class="feature-icon" aria-hidden="true">🏆</div>
-                <h3>Positive motivation</h3>
-                <p>Badges reward meaningful milestones, while the leaderboard uses learning points rather than paid advantages.</p>
-            </article>
-            <article class="feature-card accent-yellow">
-                <div class="feature-icon" aria-hidden="true">📱</div>
-                <h3>Built for limited data</h3>
-                <p>No heavy frameworks or videos are required. Pages remain usable on phones, tablets and school computers.</p>
-            </article>
+            <?php foreach ($features as $feature): ?><article class="feature-card"><span class="feature-icon"><?= icon($feature['icon']) ?></span><h3><?= e($feature['title']) ?></h3><p><?= e($feature['description']) ?></p></article><?php endforeach; ?>
         </div>
     </div>
 </section>
-
-<section class="section section-soft" id="how-it-works">
-    <div class="container split-section">
-        <div>
-            <span class="eyebrow">A simple learning cycle</span>
-            <h2>Understand. Try. Check. Create.</h2>
-            <p>CodeMwana uses a mastery-focused flow. Learners first meet the concept, practise with guidance, check understanding and then create something of their own.</p>
-            <ol class="step-list">
-                <li><span>1</span><div><strong>Choose a path</strong><p>Begin with computational thinking, MwanaCode or web creation.</p></div></li>
-                <li><span>2</span><div><strong>Complete a lesson</strong><p>Read a child-friendly example and attempt the coding task.</p></div></li>
-                <li><span>3</span><div><strong>Take a quick quiz</strong><p>Immediate feedback explains why an answer is correct.</p></div></li>
-                <li><span>4</span><div><strong>Save a project</strong><p>Return later and improve the program across multiple sessions.</p></div></li>
-            </ol>
-        </div>
-        <div class="learning-map" aria-label="Learning path illustration">
-            <div class="map-card completed"><span>✓</span><div><strong>Algorithms</strong><small>Completed</small></div></div>
-            <div class="map-line"></div>
-            <div class="map-card active"><span>2</span><div><strong>Variables</strong><small>Current lesson</small></div></div>
-            <div class="map-line"></div>
-            <div class="map-card"><span>3</span><div><strong>Decisions</strong><small>Up next</small></div></div>
-            <div class="map-line"></div>
-            <div class="map-card"><span>4</span><div><strong>Loops</strong><small>Locked</small></div></div>
-        </div>
+<section class="section workflow-section">
+    <div class="container workflow-grid">
+        <div><span class="eyebrow light">A clear learning loop</span><h2>Learn the idea, practise it, prove it, build with it.</h2><p>Every operation has a purpose and visible feedback. Learners always know what happened and what to do next.</p></div>
+        <ol class="workflow-list"><li><span>01</span><div><strong>Enrol in a path</strong><p>Choose a path based on its outcomes, level and lesson sequence.</p></div></li><li><span>02</span><div><strong>Complete guided lessons</strong><p>Read examples, predict output and work through practical challenges.</p></div></li><li><span>03</span><div><strong>Submit assessment</strong><p>Receive a score and an explanation for every question.</p></div></li><li><span>04</span><div><strong>Create a project</strong><p>Save original programs and retain previous versions when code changes.</p></div></li></ol>
     </div>
 </section>
-
-<section class="section" id="safety">
-    <div class="container safety-panel">
-        <div class="safety-illustration" aria-hidden="true">🛡️</div>
-        <div>
-            <span class="eyebrow">Child-centred by design</span>
-            <h2>A learning space without public messaging or distracting adverts</h2>
-            <p>The system collects only information needed for learning accounts. Learners cannot contact strangers, post public comments or run unrestricted browser code. Teachers see academic progress, not private conversations.</p>
-            <a class="text-link" href="<?= e(url('privacy.php')) ?>">Read the privacy and safety approach <span aria-hidden="true">→</span></a>
-        </div>
-    </div>
-</section>
-
-<section class="section cta-section">
-    <div class="container cta-card">
-        <div><span class="eyebrow">Ready for the first command?</span><h2>Write “Hello, Zambia!” and begin building.</h2></div>
-        <a class="button button-large button-light" href="<?= e(url('register.php')) ?>">Start learning now</a>
-    </div>
-</section>
+<?php if ($announcements): ?><section class="section"><div class="container"><div class="section-heading"><span class="eyebrow">Platform notices</span><h2>Latest from CodeMwana</h2></div><div class="announcement-grid"><?php foreach ($announcements as $notice): ?><article class="announcement-card"><span><?= e(date('j M Y', strtotime($notice['published_at']))) ?></span><h3><?= e($notice['title']) ?></h3><p><?= e($notice['body']) ?></p></article><?php endforeach; ?></div></div></section><?php endif; ?>
+<section class="section final-cta"><div class="container"><div class="cta-panel"><div><span class="eyebrow light"><?= $registrationOpen ? 'Begin with a real account' : 'Continue your learning' ?></span><h2>Your progress should belong to you.</h2><p><?= $registrationOpen ? 'Create a learner account and keep every lesson, score, achievement and project connected across sessions.' : 'Registration is managed by the platform administrator. Existing learners can sign in to continue.' ?></p></div><a class="button button-light button-large" href="<?= e(url($registrationOpen ? 'register.php' : 'login.php')) ?>"><?= $registrationOpen ? 'Create learner account' : 'Sign in' ?><?= icon('arrow-right') ?></a></div></div></section>
 <?php require base_path('partials/footer.php'); ?>

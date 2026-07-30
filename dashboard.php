@@ -2,110 +2,48 @@
 require_once __DIR__ . '/app/bootstrap.php';
 require_auth();
 $user = current_user();
-$stats = Learning::dashboardStats((int) $user['id']);
-$courses = Learning::courses();
-$badges = Learning::badges((int) $user['id']);
-$earnedBadges = array_values(array_filter($badges, fn(array $badge): bool => (int) $badge['earned'] === 1));
-$pageTitle = 'Dashboard';
-$bodyClass = 'app-page';
+$data = Learning::dashboardData((int) $user['id']);
+$courses = Learning::courses((int) $user['id']);
+$badges = array_filter(Learning::badges((int) $user['id']), fn($badge) => (int) $badge['earned'] === 1);
+$pageTitle = 'Overview';
+$bodyClass = 'dashboard-page';
 require base_path('partials/header.php');
+$firstName = explode(' ', trim($user['name']))[0];
 ?>
-<section class="dashboard-hero">
-    <div class="container dashboard-hero-grid">
-        <div>
-            <span class="eyebrow light">Learner dashboard</span>
-            <h1>Hello, <?= e(explode(' ', $user['name'])[0]) ?>! <span aria-hidden="true">👋🏾</span></h1>
-            <p>One clear idea today can become a useful program tomorrow.</p>
-        </div>
-        <div class="points-card">
-            <span aria-hidden="true">⭐</span>
-            <div><strong><?= number_format((int) $user['points']) ?></strong><small>learning points</small></div>
-            <div class="points-divider"></div>
-            <div><strong><?= number_format((int) $user['streak_days']) ?></strong><small>day streak</small></div>
-        </div>
-    </div>
+<section class="workspace-section dashboard-welcome">
+    <div class="welcome-copy"><span class="eyebrow">Learner workspace</span><h1>Welcome back, <?= e($firstName) ?>.</h1><p>Your next action is ready. Continue a lesson, review an announcement or build a program in the Code Lab.</p></div>
+    <div class="points-pill"><?= icon('trophy') ?><span><strong><?= number_format((int) $user['points']) ?></strong><small>Total points</small></span></div>
 </section>
-<section class="section dashboard-content">
-    <div class="container app-layout">
-        <div class="app-main">
-            <?php if ($stats['next']): ?>
-            <article class="continue-card">
-                <div class="continue-icon" aria-hidden="true"><?= e($stats['next']['icon'] ?? '💡') ?></div>
-                <div class="continue-copy">
-                    <span>Continue learning</span>
-                    <h2><?= e($stats['next']['title']) ?></h2>
-                    <p><?= e($stats['next']['course_title']) ?> · <?= (int) $stats['next']['duration_minutes'] ?> minutes · <?= e(ucfirst($stats['next']['difficulty'])) ?></p>
-                </div>
-                <a class="button" href="<?= e(url('lesson.php?id=' . (int) $stats['next']['id'])) ?>">Open lesson <span aria-hidden="true">→</span></a>
-            </article>
-            <?php else: ?>
-            <article class="continue-card completed-card">
-                <div class="continue-icon" aria-hidden="true">🎉</div>
-                <div class="continue-copy"><span>All current lessons completed</span><h2>You finished every published lesson!</h2><p>Use the code lab to create a new project or improve an existing one.</p></div>
-                <a class="button" href="<?= e(url('playground.php')) ?>">Open Code Lab</a>
-            </article>
-            <?php endif; ?>
-
-            <div class="dashboard-stat-grid">
-                <article class="metric-card"><span class="metric-icon purple" aria-hidden="true">✓</span><div><strong><?= $stats['completed'] ?>/<?= $stats['lessons'] ?></strong><small>Lessons completed</small></div><progress value="<?= $stats['completed'] ?>" max="<?= max(1, $stats['lessons']) ?>"><?= $stats['completed'] ?></progress></article>
-                <article class="metric-card"><span class="metric-icon orange" aria-hidden="true">⚡</span><div><strong><?= $stats['average'] ?>%</strong><small>Average best score</small></div><progress value="<?= $stats['average'] ?>" max="100"><?= $stats['average'] ?>%</progress></article>
-                <article class="metric-card"><span class="metric-icon green" aria-hidden="true">{ }</span><div><strong><?= $stats['projects'] ?></strong><small>Saved code projects</small></div><a href="<?= e(url('projects.php')) ?>">View projects</a></article>
-            </div>
-
-            <div class="section-row">
-                <div><span class="eyebrow">Learning paths</span><h2>Choose what to practise</h2></div>
-                <a class="text-link" href="<?= e(url('courses.php')) ?>">View all lessons <span aria-hidden="true">→</span></a>
-            </div>
-            <div class="course-grid compact-course-grid">
-                <?php foreach ($courses as $course): ?>
-                <?php
-                    $lessons = Learning::lessonsForCourse((int) $course['id'], (int) $user['id']);
-                    $completed = count(array_filter($lessons, fn(array $l): bool => $l['progress_status'] === 'completed'));
-                    $percent = count($lessons) ? (int) round(($completed / count($lessons)) * 100) : 0;
-                ?>
-                <article class="course-card" style="--course-accent: <?= e($course['colour']) ?>">
-                    <div class="course-top"><span class="course-icon" aria-hidden="true"><?= e($course['icon']) ?></span><span class="level-pill"><?= e($course['level']) ?></span></div>
-                    <h3><?= e($course['title']) ?></h3>
-                    <p><?= e($course['short_description']) ?></p>
-                    <div class="progress-label"><span><?= $completed ?> of <?= count($lessons) ?> lessons</span><strong><?= $percent ?>%</strong></div>
-                    <progress value="<?= $percent ?>" max="100"><?= $percent ?>%</progress>
-                    <a class="card-link" href="<?= e(url('courses.php?course=' . (int) $course['id'])) ?>">Explore path <span aria-hidden="true">→</span></a>
-                </article>
+<section class="metric-grid four">
+    <article class="metric-card"><span class="metric-icon purple"><?= icon('book-open') ?></span><div><small>Lessons completed</small><strong><?= (int) $data['completed_lessons'] ?><span>/ <?= (int) $data['total_lessons'] ?></span></strong></div></article>
+    <article class="metric-card"><span class="metric-icon green"><?= icon('chart') ?></span><div><small>Overall progress</small><strong><?= (int) $data['completion_percent'] ?>%</strong></div></article>
+    <article class="metric-card"><span class="metric-icon orange"><?= icon('check-circle') ?></span><div><small>Average quiz score</small><strong><?= (int) $data['average_score'] ?>%</strong></div></article>
+    <article class="metric-card"><span class="metric-icon blue"><?= icon('folder-code') ?></span><div><small>Saved projects</small><strong><?= (int) $data['project_count'] ?></strong></div></article>
+</section>
+<div class="dashboard-grid">
+    <div class="dashboard-primary">
+        <?php if ($data['next_lesson']): $next = $data['next_lesson']; ?>
+        <section class="panel continue-panel" style="--course:<?= e($next['colour']) ?>">
+            <div class="panel-heading"><div><span class="eyebrow">Continue learning</span><h2>Your next lesson</h2></div><a class="text-link" href="<?= e(url('courses.php')) ?>">View all paths<?= icon('arrow-right') ?></a></div>
+            <div class="continue-card"><span class="continue-icon"><?= icon($next['icon']) ?></span><div><small><?= e($next['course_title']) ?></small><h3><?= e($next['title']) ?></h3><p><?= e($next['summary']) ?></p><div class="inline-meta"><span><?= icon('clock') ?><?= (int) $next['duration_minutes'] ?> minutes</span><span><?= icon($next['progress_status'] === 'in_progress' ? 'play' : 'book-open') ?><?= $next['progress_status'] === 'in_progress' ? 'In progress' : 'Ready to start' ?></span></div></div><a class="button" href="<?= e(url('lesson.php?lesson=' . urlencode($next['slug']))) ?>"><?= $next['progress_status'] === 'in_progress' ? 'Continue lesson' : 'Start lesson' ?><?= icon('arrow-right') ?></a></div>
+        </section>
+        <?php else: ?>
+        <section class="panel empty-panel"><span class="empty-icon"><?= icon('book-open') ?></span><h2>Choose your first learning path</h2><p>Enrol in a path to receive an ordered next lesson on this dashboard.</p><a class="button" href="<?= e(url('courses.php')) ?>">Explore learning paths</a></section>
+        <?php endif; ?>
+        <section class="panel">
+            <div class="panel-heading"><div><span class="eyebrow">Your learning paths</span><h2>Path progress</h2></div></div>
+            <div class="path-list">
+                <?php foreach ($courses as $course): $percent=(int)$course['lesson_count']>0?(int)round(((int)$course['completed_count']/(int)$course['lesson_count'])*100):0; ?>
+                <a class="path-row" href="<?= e(url('course.php?course=' . urlencode($course['slug']))) ?>"><span class="course-icon compact" style="--course:<?= e($course['colour']) ?>"><?= icon($course['icon']) ?></span><span class="path-info"><strong><?= e($course['title']) ?></strong><small><?= (int)$course['completed_count'] ?> of <?= (int)$course['lesson_count'] ?> lessons complete</small><span class="progress-track"><i style="width:<?= $percent ?>%"></i></span></span><b><?= $percent ?>%</b><?= icon('arrow-right') ?></a>
                 <?php endforeach; ?>
             </div>
-
-            <div class="section-row"><div><span class="eyebrow">Recent activity</span><h2>Pick up where you stopped</h2></div></div>
-            <div class="activity-list">
-                <?php if (!$stats['recent']): ?><div class="empty-state small"><span aria-hidden="true">🌱</span><h3>Your learning history starts here</h3><p>Open a lesson and your activity will appear in this section.</p></div><?php endif; ?>
-                <?php foreach ($stats['recent'] as $activity): ?>
-                <a class="activity-item" href="<?= e(url('lesson.php?id=' . (int) $activity['id'])) ?>">
-                    <span class="activity-icon <?= e($activity['status']) ?>" aria-hidden="true"><?= $activity['status'] === 'completed' ? '✓' : '▶' ?></span>
-                    <span><strong><?= e($activity['title']) ?></strong><small><?= e(ucfirst(str_replace('_', ' ', $activity['status']))) ?> · Best score <?= (int) $activity['best_score'] ?>%</small></span>
-                    <time><?= e(time_ago($activity['last_accessed_at'])) ?></time>
-                </a>
-                <?php endforeach; ?>
-            </div>
-        </div>
-        <aside class="app-sidebar">
-            <div class="sidebar-card">
-                <div class="sidebar-card-heading"><h2>Achievements</h2><a href="<?= e(url('progress.php#badges')) ?>">All badges</a></div>
-                <?php if ($earnedBadges): ?>
-                    <div class="badge-list">
-                    <?php foreach (array_slice($earnedBadges, 0, 4) as $badge): ?>
-                        <div class="badge-item"><span aria-hidden="true"><?= e($badge['icon']) ?></span><div><strong><?= e($badge['name']) ?></strong><small><?= e($badge['description']) ?></small></div></div>
-                    <?php endforeach; ?>
-                    </div>
-                <?php else: ?>
-                    <div class="empty-badges"><span aria-hidden="true">🏅</span><p>Complete your first lesson to unlock a badge.</p></div>
-                <?php endif; ?>
-            </div>
-            <div class="sidebar-card tip-card">
-                <span class="tip-label">Programming tip</span>
-                <blockquote>“When a program is not working, test one small part at a time.”</blockquote>
-                <small>This process is called debugging.</small>
-            </div>
-            <a class="sidebar-action-card" href="<?= e(url('playground.php')) ?>"><span aria-hidden="true">💻</span><div><strong>Build something</strong><small>Open a blank MwanaCode project</small></div><b aria-hidden="true">→</b></a>
-        </aside>
+        </section>
+        <section class="panel" id="announcements"><div class="panel-heading"><div><span class="eyebrow">Announcements</span><h2>What you need to know</h2></div></div><?php if ($data['announcements']): ?><div class="notice-list"><?php foreach ($data['announcements'] as $notice): ?><article><span class="notice-icon"><?= icon('bell') ?></span><div><div class="notice-top"><h3><?= e($notice['title']) ?></h3><time><?= e(time_ago($notice['published_at'])) ?></time></div><p><?= e($notice['body']) ?></p><small>Published by <?= e($notice['author_name']) ?></small></div></article><?php endforeach; ?></div><?php else: ?><div class="compact-empty">There are no current announcements for your account.</div><?php endif; ?></section>
     </div>
-</section>
+    <aside class="dashboard-aside">
+        <section class="panel quick-actions"><div class="panel-heading"><h2>Quick actions</h2></div><a href="<?= e(url('playground.php')) ?>"><span class="action-icon purple"><?= icon('terminal') ?></span><span><strong>Open Code Lab</strong><small>Create or continue a program</small></span><?= icon('arrow-right') ?></a><a href="<?= e(url('projects.php')) ?>"><span class="action-icon blue"><?= icon('folder-code') ?></span><span><strong>Project library</strong><small>Manage saved programs</small></span><?= icon('arrow-right') ?></a><a href="<?= e(url('progress.php')) ?>"><span class="action-icon green"><?= icon('chart') ?></span><span><strong>Progress report</strong><small>Review scores and badges</small></span><?= icon('arrow-right') ?></a></section>
+        <section class="panel"><div class="panel-heading"><div><span class="eyebrow">Achievements</span><h2>Recent badges</h2></div><a class="text-link" href="<?= e(url('progress.php#badges')) ?>">View all</a></div><?php if ($badges): ?><div class="badge-stack"><?php foreach (array_slice(array_reverse($badges),0,4) as $badge): ?><div><span><?= icon($badge['icon']) ?></span><div><strong><?= e($badge['name']) ?></strong><small><?= e($badge['description']) ?></small></div></div><?php endforeach; ?></div><?php else: ?><div class="compact-empty">Complete a lesson or save a project to earn your first badge.</div><?php endif; ?></section>
+        <section class="panel activity-panel"><div class="panel-heading"><h2>Recent activity</h2></div><?php if ($data['recent_activity']): ?><ul class="activity-list"><?php foreach ($data['recent_activity'] as $activity): ?><li><span></span><div><strong><?= e(ucwords(str_replace('_',' ',$activity['action']))) ?></strong><small><?= e(time_ago($activity['created_at'])) ?></small></div></li><?php endforeach; ?></ul><?php else: ?><div class="compact-empty">Your activity timeline will appear here.</div><?php endif; ?></section>
+    </aside>
+</div>
 <?php require base_path('partials/footer.php'); ?>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'codemwana-static-v1';
+const CACHE_NAME = 'codemwana-static-v2';
 const STATIC_ASSETS = [
   './offline.html',
   './assets/css/app.css',
@@ -19,15 +19,18 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-  const url = new URL(event.request.url);
-  if (url.origin !== self.location.origin) return;
-  if (url.pathname.endsWith('.css') || url.pathname.endsWith('.js') || url.pathname.endsWith('.svg')) {
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.origin !== self.location.origin) return;
+
+  if (requestUrl.pathname.endsWith('.css') || requestUrl.pathname.endsWith('.js') || requestUrl.pathname.endsWith('.svg')) {
     event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request).then((response) => {
+      if (!response || response.status !== 200) return response;
       const copy = response.clone();
       caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
       return response;
     })));
     return;
   }
+
   event.respondWith(fetch(event.request).catch(() => caches.match('./offline.html')));
 });
