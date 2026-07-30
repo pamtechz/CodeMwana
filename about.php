@@ -1,6 +1,5 @@
 <?php
 require_once __DIR__ . '/app/bootstrap.php';
-if (!Database::tableExists('users')) redirect('setup.php');
 $stats = Learning::publicStatistics();
 $pageTitle = 'About';
 $pageDescription = 'How CodeMwana delivers structured, safe and database-backed programming education for children.';

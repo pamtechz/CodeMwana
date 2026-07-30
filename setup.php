@@ -49,6 +49,7 @@ if (is_post() && !$installed && !$connectionError) {
             }
             require_once base_path('database/seed.php');
             seed_database($pdo, $data);
+            Installation::markInstalled(Migrator::VERSION);
             clear_old();
             flash('success', 'CodeMwana is ready. Sign in with the administrator account you created.');
             redirect('login.php');
@@ -64,7 +65,7 @@ require base_path('partials/header.php');
 ?>
 <section class="setup-shell">
     <div class="setup-intro">
-        <span class="eyebrow">CodeMwana 2.0</span>
+        <span class="eyebrow">CodeMwana 3.0</span>
         <h1>Install the learning platform</h1>
         <p>This installer creates the database structure, curriculum, badges, platform settings and the first administrator account.</p>
         <div class="setup-checks">

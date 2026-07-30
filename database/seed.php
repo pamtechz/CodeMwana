@@ -28,8 +28,8 @@ function seed_database(PDO $pdo, array $administrator): void
       "sort_order": 1
     },
     {
-      "title": "Safe code execution",
-      "description": "MwanaCode interprets a limited educational command set without evaluating arbitrary browser scripts.",
+      "title": "Multi-language Code Lab",
+      "description": "Ten mainstream language workspaces combine sandboxed browser previews with an optional isolated compiler runner.",
       "icon": "shield-check",
       "sort_order": 2
     },
@@ -40,8 +40,8 @@ function seed_database(PDO $pdo, array $administrator): void
       "sort_order": 3
     },
     {
-      "title": "Creative coding canvas",
-      "description": "Turtle graphics make loops, angles and debugging visible through drawings learners create themselves.",
+      "title": "Multi-file project workspace",
+      "description": "Learners create real project files, provide standard input, run code and retain database-backed version history.",
       "icon": "palette",
       "sort_order": 4
     },
@@ -988,6 +988,19 @@ JSON, true, 512, JSON_THROW_ON_ERROR);
             if (!$exists->fetchColumn()) $settingStatement->execute([$key, $value]);
         }
 
+        if ((int) $pdo->query('SELECT COUNT(*) FROM programming_languages')->fetchColumn() === 0) {
+            $statement = $pdo->prepare('INSERT INTO programming_languages (slug, name, short_name, category, description, editor_mode, execution_mode, runner_language, runner_version, main_file, colour, starter_files_json, sort_order, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)');
+            foreach (LanguageCatalog::definitions() as $language) {
+                $statement->execute([
+                    $language['slug'], $language['name'], $language['short_name'], $language['category'],
+                    $language['description'], $language['editor_mode'], $language['execution_mode'],
+                    $language['runner_language'], $language['runner_version'], $language['main_file'],
+                    $language['colour'], json_encode($language['files'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+                    $language['sort_order'],
+                ]);
+            }
+        }
+
         if ((int) $pdo->query('SELECT COUNT(*) FROM home_features')->fetchColumn() === 0) {
             $statement = $pdo->prepare('INSERT INTO home_features (title, description, icon, sort_order, is_active) VALUES (?, ?, ?, ?, 1)');
             foreach ($content['features'] as $feature) $statement->execute([$feature['title'], $feature['description'], $feature['icon'], $feature['sort_order']]);
@@ -1042,7 +1055,7 @@ JSON, true, 512, JSON_THROW_ON_ERROR);
         }
 
         if ((int) $pdo->query('SELECT COUNT(*) FROM schema_meta')->fetchColumn() === 0) {
-            $pdo->prepare('INSERT INTO schema_meta (schema_version) VALUES (?)')->execute(['2.0.0']);
+            $pdo->prepare('INSERT INTO schema_meta (schema_version) VALUES (?)')->execute([Migrator::VERSION]);
         }
         $pdo->commit();
     } catch (Throwable $exception) {

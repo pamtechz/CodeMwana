@@ -19,6 +19,7 @@ $isRootDashboard = basename($currentPath) === 'dashboard.php' && !str_contains($
     <link rel="manifest" href="<?= e(url('manifest.json')) ?>">
     <link rel="icon" href="<?= e(asset('img/favicon.svg')) ?>" type="image/svg+xml">
     <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset('css/app-v3.css')) ?>">
 </head>
 <body class="<?= e(trim(($user ? 'authenticated ' : 'public ') . $bodyClass)) ?>">
 <a class="skip-link" href="#main-content">Skip to main content</a>

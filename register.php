@@ -1,7 +1,6 @@
 <?php
 require_once __DIR__ . '/app/bootstrap.php';
 if (Auth::check()) redirect('dashboard.php');
-if (!Database::tableExists('users')) redirect('setup.php');
 if ((string) setting('registration_open', '1') !== '1') { flash('error', 'Learner registration is currently closed.'); redirect('login.php'); }
 
 $errors = [];

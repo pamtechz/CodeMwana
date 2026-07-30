@@ -1,7 +1,6 @@
 <?php
 require_once __DIR__ . '/app/bootstrap.php';
 if (Auth::check()) redirect('dashboard.php');
-if (!Database::tableExists('users')) redirect('setup.php');
 
 $errors = [];
 if (is_post()) {

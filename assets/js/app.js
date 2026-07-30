@@ -6,9 +6,15 @@
   const publicToggle = document.querySelector('[data-nav-toggle]');
   const publicNav = document.querySelector('[data-nav]');
   if (publicToggle && publicNav) {
+    const closePublicNav = () => { publicNav.classList.remove('is-open'); publicToggle.setAttribute('aria-expanded', 'false'); };
     publicToggle.addEventListener('click', () => {
       const open = publicNav.classList.toggle('is-open');
       publicToggle.setAttribute('aria-expanded', String(open));
+    });
+    publicNav.querySelectorAll('a').forEach((link) => link.addEventListener('click', closePublicNav));
+    document.addEventListener('click', (event) => {
+      if (!publicNav.classList.contains('is-open') || publicNav.contains(event.target) || publicToggle.contains(event.target)) return;
+      closePublicNav();
     });
   }
 
@@ -19,6 +25,18 @@
   document.querySelector('[data-sidebar-open]')?.addEventListener('click', openSidebar);
   document.querySelector('[data-sidebar-close]')?.addEventListener('click', closeSidebar);
   sidebarOverlay?.addEventListener('click', closeSidebar);
+  sidebar?.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => { if (window.innerWidth <= 1024) closeSidebar(); }));
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      closeSidebar();
+      publicNav?.classList.remove('is-open');
+      publicToggle?.setAttribute('aria-expanded', 'false');
+      document.querySelectorAll('dialog[open]').forEach((dialog) => dialog.close());
+    }
+  });
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 1024) closeSidebar();
+  }, { passive: true });
 
   document.querySelectorAll('[data-password-toggle]').forEach((button) => {
     button.addEventListener('click', () => {

@@ -1,6 +1,5 @@
 <?php
 require_once __DIR__ . '/app/bootstrap.php';
-if (!Database::tableExists('users')) redirect('setup.php');
 if (Auth::check()) redirect('dashboard.php');
 $stats = Learning::publicStatistics();
 $courses = Learning::courses();
@@ -24,7 +23,7 @@ require base_path('partials/header.php');
                 <?php if ($registrationOpen): ?><a class="button button-large" href="<?= e(url('register.php')) ?>"><?= e(setting('primary_action_text')) ?><?= icon('arrow-right') ?></a><?php endif; ?>
                 <a class="button button-large button-secondary" href="#learning"><?= e(setting('secondary_action_text')) ?></a>
             </div>
-            <div class="hero-trust"><span><?= icon('shield-check') ?> Safe interpreter</span><span><?= icon('wifi') ?> Low-bandwidth friendly</span><span><?= icon('school') ?> Built for guided learning</span></div>
+            <div class="hero-trust"><span><?= icon('shield-check') ?> Sandboxed execution</span><span><?= icon('terminal') ?><?= number_format($stats['languages']) ?> programming languages</span><span><?= icon('school') ?> Built for guided learning</span></div>
         </div>
         <div class="hero-product" aria-label="CodeMwana curriculum preview">
             <div class="browser-frame">
@@ -46,10 +45,10 @@ require base_path('partials/header.php');
 </section>
 <section class="platform-stats">
     <div class="container stats-row">
+        <div><strong><?= number_format($stats['languages']) ?></strong><span>Programming languages</span></div>
         <div><strong><?= number_format($stats['courses']) ?></strong><span>Learning paths</span></div>
         <div><strong><?= number_format($stats['lessons']) ?></strong><span>Complete lessons</span></div>
-        <div><strong><?= number_format($stats['learners']) ?></strong><span>Registered learners</span></div>
-        <div><strong><?= number_format($stats['projects']) ?></strong><span>Programs saved</span></div>
+        <div><strong><?= number_format($stats['projects']) ?></strong><span>Projects saved</span></div>
     </div>
 </section>
 <section class="section" id="learning">

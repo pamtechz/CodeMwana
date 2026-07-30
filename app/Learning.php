@@ -7,13 +7,14 @@ final class Learning
     public static function publicStatistics(): array
     {
         if (!Database::tableExists('courses')) {
-            return ['courses' => 0, 'lessons' => 0, 'learners' => 0, 'projects' => 0];
+            return ['courses' => 0, 'lessons' => 0, 'learners' => 0, 'projects' => 0, 'languages' => 10];
         }
         return [
             'courses' => (int) Database::scalar("SELECT COUNT(*) FROM courses WHERE is_published = 1"),
             'lessons' => (int) Database::scalar("SELECT COUNT(*) FROM lessons WHERE is_published = 1"),
             'learners' => (int) Database::scalar("SELECT COUNT(*) FROM users WHERE role = 'learner' AND status = 'active'"),
             'projects' => (int) Database::scalar('SELECT COUNT(*) FROM projects'),
+            'languages' => Database::tableExists('programming_languages') ? (int) Database::scalar('SELECT COUNT(*) FROM programming_languages WHERE is_active = 1') : count(LanguageCatalog::definitions()),
         ];
     }
 
@@ -286,41 +287,96 @@ final class Learning
         }
     }
 
+    public static function languages(bool $includeGuided = true): array
+    {
+        return LanguageCatalog::all($includeGuided);
+    }
+
+    public static function language(string $slug): ?array
+    {
+        return LanguageCatalog::find($slug);
+    }
+
     public static function projects(int $userId): array
     {
-        return Database::fetchAll(
+        $projects = Database::fetchAll(
             "SELECT p.*, (SELECT COUNT(*) FROM project_versions pv WHERE pv.project_id = p.id) AS version_count
              FROM projects p WHERE p.user_id = ? ORDER BY p.updated_at DESC",
             [$userId]
         );
+        return array_map([self::class, 'hydrateProject'], $projects);
     }
 
     public static function project(int $projectId, int $userId): ?array
     {
-        return Database::fetch('SELECT * FROM projects WHERE id = ? AND user_id = ?', [$projectId, $userId]);
+        $project = Database::fetch('SELECT * FROM projects WHERE id = ? AND user_id = ?', [$projectId, $userId]);
+        return $project ? self::hydrateProject($project) : null;
     }
 
     public static function saveProject(int $userId, array $data): int
     {
         $projectId = (int) ($data['id'] ?? 0);
-        $title = trim((string) $data['title']);
-        $code = (string) $data['code'];
+        $title = trim((string) ($data['title'] ?? ''));
+        $languageSlug = strtolower(trim((string) ($data['language'] ?? 'mwanacode')));
+        $language = self::language($languageSlug);
+        if (!$language) throw new InvalidArgumentException('Select a supported programming language.');
+
+        $workspace = LanguageCatalog::normalizeWorkspace((array) ($data['files'] ?? []), $language);
+        $mainFile = (string) ($language['main_file'] ?? array_key_first($workspace));
+        $code = (string) ($workspace[$mainFile] ?? reset($workspace) ?: '');
+        $stdin = mb_substr((string) ($data['stdin'] ?? ''), 0, 10000);
+        $workspaceJson = json_encode($workspace, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+
         if ($projectId > 0) {
             $project = self::project($projectId, $userId);
             if (!$project) throw new RuntimeException('The project could not be found.');
-            Database::transaction(function () use ($projectId, $project, $title, $code): void {
-                if ($project['code'] !== $code) {
-                    Database::query('INSERT INTO project_versions (project_id, title, code) VALUES (?, ?, ?)', [$projectId, $project['title'], $project['code']]);
+            $changed = $project['title'] !== $title
+                || $project['language'] !== $languageSlug
+                || $project['workspace_json'] !== $workspaceJson
+                || (string) ($project['stdin'] ?? '') !== $stdin;
+            Database::transaction(function () use ($projectId, $project, $title, $languageSlug, $code, $workspaceJson, $stdin, $changed, $userId): void {
+                if ($changed) {
+                    Database::query(
+                        'INSERT INTO project_versions (project_id, title, language, code, workspace_json, stdin) VALUES (?, ?, ?, ?, ?, ?)',
+                        [$projectId, $project['title'], $project['language'], $project['code'], $project['workspace_json'], $project['stdin']]
+                    );
                 }
-                Database::query('UPDATE projects SET title = ?, code = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [$title, $code, $projectId]);
+                Database::query(
+                    'UPDATE projects SET title = ?, language = ?, code = ?, workspace_json = ?, stdin = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?',
+                    [$title, $languageSlug, $code, $workspaceJson, $stdin, $projectId, $userId]
+                );
             });
-            activity('project_updated', ['project_id' => $projectId], $userId);
+            activity('project_updated', ['project_id' => $projectId, 'language' => $languageSlug], $userId);
             return $projectId;
         }
-        $projectId = Database::insert('INSERT INTO projects (user_id, title, language, code) VALUES (?, ?, ?, ?)', [$userId, $title, 'mwanacode', $code]);
-        activity('project_created', ['project_id' => $projectId], $userId);
+
+        $projectId = Database::insert(
+            'INSERT INTO projects (user_id, title, language, code, workspace_json, stdin) VALUES (?, ?, ?, ?, ?, ?)',
+            [$userId, $title, $languageSlug, $code, $workspaceJson, $stdin]
+        );
+        activity('project_created', ['project_id' => $projectId, 'language' => $languageSlug], $userId);
         self::awardEligibleBadges($userId);
         return $projectId;
+    }
+
+    public static function logCodeRun(int $userId, ?int $projectId, string $languageSlug, array $result, string $stdin): void
+    {
+        if (!Database::tableExists('code_runs')) return;
+        Database::query(
+            'INSERT INTO code_runs (user_id, project_id, language_slug, status, stdin_text, stdout_text, stderr_text, exit_code, execution_time_ms, memory_bytes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                $userId,
+                $projectId ?: null,
+                $languageSlug,
+                (string) ($result['status'] ?? 'failed'),
+                mb_substr($stdin, 0, 10000),
+                (string) ($result['stdout'] ?? ''),
+                (string) ($result['stderr'] ?? ''),
+                $result['exit_code'] ?? null,
+                $result['execution_time_ms'] ?? null,
+                $result['memory_bytes'] ?? null,
+            ]
+        );
     }
 
     public static function deleteProject(int $projectId, int $userId): bool
@@ -328,8 +384,23 @@ final class Learning
         $project = self::project($projectId, $userId);
         if (!$project) return false;
         Database::query('DELETE FROM projects WHERE id = ? AND user_id = ?', [$projectId, $userId]);
-        activity('project_deleted', ['project_title' => $project['title']], $userId);
+        activity('project_deleted', ['project_title' => $project['title'], 'language' => $project['language']], $userId);
         return true;
+    }
+
+    private static function hydrateProject(array $project): array
+    {
+        $language = self::language((string) ($project['language'] ?? 'mwanacode')) ?? LanguageCatalog::guided();
+        $workspace = json_decode((string) ($project['workspace_json'] ?? ''), true);
+        if (!is_array($workspace) || !$workspace) {
+            $workspace = [(string) ($language['main_file'] ?? 'main.mwana') => (string) ($project['code'] ?? '')];
+        }
+        $workspace = LanguageCatalog::normalizeWorkspace($workspace, $language);
+        $project['workspace'] = $workspace;
+        $project['workspace_json'] = json_encode($workspace, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $project['language_meta'] = $language;
+        $project['stdin'] = (string) ($project['stdin'] ?? '');
+        return $project;
     }
 
     public static function leaderboard(int $limit = 50): array

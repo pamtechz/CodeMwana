@@ -144,12 +144,36 @@ CREATE TABLE IF NOT EXISTS quiz_attempts (
     INDEX idx_attempt_lesson (lesson_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+
+CREATE TABLE IF NOT EXISTS programming_languages (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    slug VARCHAR(40) NOT NULL UNIQUE,
+    name VARCHAR(80) NOT NULL,
+    short_name VARCHAR(20) NOT NULL,
+    category VARCHAR(60) NOT NULL,
+    description TEXT NOT NULL,
+    editor_mode VARCHAR(30) NOT NULL,
+    execution_mode VARCHAR(30) NOT NULL,
+    runner_language VARCHAR(40) NULL,
+    runner_version VARCHAR(30) NULL,
+    main_file VARCHAR(120) NOT NULL,
+    colour VARCHAR(20) NOT NULL,
+    starter_files_json JSON NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_languages_active_order (is_active, sort_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS projects (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id INT UNSIGNED NOT NULL,
     title VARCHAR(120) NOT NULL,
-    language VARCHAR(30) NOT NULL DEFAULT 'mwanacode',
+    language VARCHAR(40) NOT NULL DEFAULT 'mwanacode',
     code MEDIUMTEXT NOT NULL,
+    workspace_json JSON NULL,
+    stdin TEXT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_projects_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -160,10 +184,33 @@ CREATE TABLE IF NOT EXISTS project_versions (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     project_id INT UNSIGNED NOT NULL,
     title VARCHAR(120) NOT NULL,
+    language VARCHAR(40) NOT NULL DEFAULT 'mwanacode',
     code MEDIUMTEXT NOT NULL,
+    workspace_json JSON NULL,
+    stdin TEXT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_versions_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
     INDEX idx_versions_project_date (project_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+CREATE TABLE IF NOT EXISTS code_runs (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNSIGNED NOT NULL,
+    project_id INT UNSIGNED NULL,
+    language_slug VARCHAR(40) NOT NULL,
+    status VARCHAR(30) NOT NULL,
+    stdin_text TEXT NULL,
+    stdout_text MEDIUMTEXT NULL,
+    stderr_text MEDIUMTEXT NULL,
+    exit_code INT NULL,
+    execution_time_ms INT NULL,
+    memory_bytes BIGINT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_code_runs_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_code_runs_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL,
+    INDEX idx_code_runs_user_date (user_id, created_at),
+    INDEX idx_code_runs_language (language_slug)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS badges (

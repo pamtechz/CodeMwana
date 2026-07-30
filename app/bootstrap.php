@@ -25,6 +25,21 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 require_once __DIR__ . '/Database.php';
+require_once __DIR__ . '/Installation.php';
+require_once __DIR__ . '/LanguageCatalog.php';
+require_once __DIR__ . '/Migrator.php';
+require_once __DIR__ . '/CodeRunner.php';
+
+Installation::enforce();
+if (Installation::installed()) {
+    try {
+        Migrator::run();
+    } catch (Throwable $exception) {
+        if (PHP_SAPI === 'cli') throw $exception;
+        Installation::migrationFailure($exception);
+    }
+}
+
 require_once __DIR__ . '/Settings.php';
 require_once __DIR__ . '/Learning.php';
 require_once __DIR__ . '/Auth.php';

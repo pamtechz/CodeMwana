@@ -1,87 +1,111 @@
-# CodeMwana
+# CodeMwana 3.0
 
 **ICT4410 Question 11:** A web application that teaches children basic programming skills and concepts.
 
-CodeMwana is a responsive, database-backed PHP learning platform built for real learner, teacher and administrator operations. The public website, curriculum, assessments, progress records, projects, announcements and platform settings all read from relational database records rather than placeholder content.
+CodeMwana is a responsive, database-backed PHP learning platform for real learner, teacher and administrator operations. Curriculum, assessments, progress, projects, announcements, platform settings and the Code Lab language catalogue persist in MySQL/MariaDB or SQLite.
 
-## Production-style capabilities
+## Code Lab
 
-- Secure learner registration and username/email authentication
-- Login rate limiting, strong password rules and secure session handling
-- Database-driven branding, homepage features, learning paths and lessons
-- Course enrolment, ordered lesson progression and saved completion status
-- Database-managed quizzes with answer explanations and best-score tracking
-- Safe MwanaCode interpreter with variables, decisions, loops and turtle drawing
-- Project CRUD with version history and ownership validation
-- Learner dashboard, progress analytics, badges and optional leaderboard
-- Teacher reporting, difficult-lesson insight and announcement management
-- Administrator user, role, status and password-reset operations
-- Learning-path, lesson and assessment-question CRUD
-- MySQL/MariaDB and SQLite schemas
-- Responsive accessible interface, PWA assets and offline fallback
-- Prepared statements, password hashing, CSRF protection, output escaping and audit logging
+Code Lab includes a guided MwanaCode workspace and ten mainstream programming workspaces:
+
+1. HTML
+2. CSS
+3. JavaScript
+4. Python
+5. PHP
+6. React
+7. Next.js
+8. Go
+9. C
+10. C++
+
+Each workspace supports database-backed starter files, multiple project files, standard input, project ownership, version history and execution records.
+
+### Execution model
+
+- **MwanaCode:** controlled in-browser interpreter with step and loop limits.
+- **HTML and CSS:** live sandboxed page preview.
+- **JavaScript:** isolated browser execution with captured console messages.
+- **React and Next.js:** sandboxed component preview. Server-only Next.js features require a full Node deployment.
+- **Python, PHP, Go, C and C++:** remote isolated execution through a configured Piston-compatible runner.
+
+CodeMwana never runs untrusted learner code directly through PHP on the application server.
+
+## Platform capabilities
+
+- Username or email authentication, rate limiting and secure sessions
+- Strong passwords, role-based access, CSRF protection and audit logging
+- Intelligent installation state and automatic schema migrations
+- Database-driven branding, homepage content, curriculum and languages
+- Course enrolment, ordered lessons, quizzes and persistent progress
+- Multi-file project CRUD, version history and execution logs
+- Learner dashboard, badges, reporting and optional leaderboard
+- Teacher performance reports and announcement management
+- Administrator user, curriculum, assessment and platform operations
+- Compact responsive layouts for phones, tablets, laptops and desktops
+- Progressive Web App assets and offline fallback
 
 ## Requirements
 
 - PHP 8.1 or newer
-- PDO MySQL for production MySQL/MariaDB, or PDO SQLite for local SQLite use
+- PDO MySQL for MySQL/MariaDB, or PDO SQLite for SQLite
 - MySQL 8 / MariaDB 10.4 or newer when using MySQL
 - Apache or another PHP-capable web server
+- Optional isolated code runner for Python, PHP, Go, C and C++
 
 ## XAMPP installation
 
-1. Copy the `CodeMwana` folder into `C:\xampp\htdocs\`.
-2. Start Apache and MySQL in XAMPP Control Panel.
-3. Create a database named `codemwana` with `utf8mb4_unicode_ci` collation.
+1. Copy the project into `C:\xampp\htdocs\CodeMwana`.
+2. Start Apache and MySQL.
+3. Create a database named `codemwana` using `utf8mb4_unicode_ci`.
 4. Copy `.env.example` to `.env`.
-5. Confirm the local values:
-
-```env
-APP_URL=http://localhost/CodeMwana
-APP_ENV=production
-APP_DEBUG=false
-DB_DRIVER=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=codemwana
-DB_USERNAME=root
-DB_PASSWORD=
-```
-
+5. Configure `APP_URL` and the database values.
 6. Open `http://localhost/CodeMwana/setup.php`.
-7. Enter the real platform organisation and first-administrator account details.
-8. Run the installation. The installer creates the schema, settings, curriculum, questions and first administrator.
-9. Delete or rename `setup.php` after a successful installation.
-10. Sign in with the administrator account created during installation.
+7. Enter the real organisation, support address and first-administrator details.
+8. Complete installation and sign in.
+9. Delete `setup.php` after installation.
+
+CodeMwana records an installation lock and verifies the database. Removing `setup.php` does not cause a redirect loop. When the database is temporarily unavailable, the application displays operational diagnostics instead of reopening setup.
 
 No fixed demonstration passwords or fake learner accounts are seeded.
 
-## Shared hosting
+## Optional remote runner
 
-See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for a cPanel/Hostinger-style deployment checklist.
+Configure an isolated Piston-compatible runner in `.env`:
+
+```env
+CODE_RUNNER_URL=https://runner.example.org
+CODE_RUNNER_TOKEN=
+CODE_RUNNER_TIMEOUT=15
+```
+
+When `CODE_RUNNER_URL` is empty, MwanaCode and the five browser-preview modes remain usable. Remote languages display a configuration message and projects can still be saved.
+
+## Updating an existing CodeMwana 2.0 installation
+
+1. Back up the database and files.
+2. Deploy the CodeMwana 3.0 source.
+3. Open the application normally.
+4. The migration service adds language, run-history and multi-file project structures.
+5. Open `system-status.php` to verify schema and runner readiness.
+6. Run `php tests/smoke.php`.
 
 ## Main directories
 
-- `app/` — configuration, database, authentication, settings and learning services
-- `assets/` — external CSS, JavaScript and image assets
-- `database/` — MySQL/SQLite schemas and curriculum installer
+- `app/` — configuration, database, installation, migration, authentication, language and learning services
+- `assets/` — responsive CSS, Code Lab JavaScript and image assets
+- `database/` — MySQL/SQLite schemas and database seed content
 - `partials/` — shared public and authenticated layouts
 - `teacher/` — reporting and announcement operations
 - `admin/` — accounts, curriculum, assessments and platform settings
-- `api/` — authenticated JSON operations
-- `docs/` — deployment, testing and project documentation
+- `api/` — authenticated project-save and code-run operations
+- `docs/` — deployment and testing documentation
 - `tests/` — static smoke checks
 
-## Safe interpreter
-
-MwanaCode does not use JavaScript `eval()`. It parses only supported educational commands and enforces maximum loop and program-step limits.
-
 ## Validation
-
-Run:
 
 ```bash
 php tests/smoke.php
 ```
 
-The smoke test validates required files, PHP syntax, JavaScript syntax where Node.js is available, prohibited placeholder attributes and key database/schema declarations.
+The smoke test validates required files, PHP and JavaScript syntax, responsive assets, intelligent installation declarations, ten database language definitions and the required database tables.

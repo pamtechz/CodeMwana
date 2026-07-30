@@ -134,12 +134,35 @@ CREATE TABLE IF NOT EXISTS quiz_attempts (
     CONSTRAINT fk_attempt_lesson FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE
 );
 
+
+CREATE TABLE IF NOT EXISTS programming_languages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    slug VARCHAR(40) NOT NULL UNIQUE,
+    name VARCHAR(80) NOT NULL,
+    short_name VARCHAR(20) NOT NULL,
+    category VARCHAR(60) NOT NULL,
+    description TEXT NOT NULL,
+    editor_mode VARCHAR(30) NOT NULL,
+    execution_mode VARCHAR(30) NOT NULL,
+    runner_language VARCHAR(40) NULL,
+    runner_version VARCHAR(30) NULL,
+    main_file VARCHAR(120) NOT NULL,
+    colour VARCHAR(20) NOT NULL,
+    starter_files_json TEXT NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    is_active INTEGER NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS projects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     title VARCHAR(120) NOT NULL,
-    language VARCHAR(30) NOT NULL DEFAULT 'mwanacode',
+    language VARCHAR(40) NOT NULL DEFAULT 'mwanacode',
     code TEXT NOT NULL,
+    workspace_json TEXT NULL,
+    stdin TEXT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_projects_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -149,9 +172,30 @@ CREATE TABLE IF NOT EXISTS project_versions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     project_id INTEGER NOT NULL,
     title VARCHAR(120) NOT NULL,
+    language VARCHAR(40) NOT NULL DEFAULT 'mwanacode',
     code TEXT NOT NULL,
+    workspace_json TEXT NULL,
+    stdin TEXT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_versions_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+
+
+CREATE TABLE IF NOT EXISTS code_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    project_id INTEGER NULL,
+    language_slug VARCHAR(40) NOT NULL,
+    status VARCHAR(30) NOT NULL,
+    stdin_text TEXT NULL,
+    stdout_text TEXT NULL,
+    stderr_text TEXT NULL,
+    exit_code INT NULL,
+    execution_time_ms INT NULL,
+    memory_bytes INT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_code_runs_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_code_runs_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS badges (
