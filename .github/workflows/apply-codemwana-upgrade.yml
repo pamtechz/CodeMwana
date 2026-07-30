@@ -1,0 +1,49 @@
+name: Apply CodeMwana production upgrade
+
+on:
+  push:
+    paths:
+      - '.upgrade/**'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-upgrade:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Rebuild and verify the source package
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .upgrade/part-* > /tmp/codemwana-v2.b64
+          echo "96c1b10c961d25fbb90f60d64cd94dba0caceb0ba05cb49c88a9b694ed965dc6  /tmp/codemwana-v2.b64" | sha256sum --check -
+          base64 --decode /tmp/codemwana-v2.b64 > /tmp/codemwana-v2-truncated.zip
+          echo "9efc767874792c6483237f9ae392f071e35d29d120ff72f4aad1cf2c01a8258c  /tmp/codemwana-v2-truncated.zip" | sha256sum --check -
+          if ! command -v zip >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y zip
+          fi
+          printf 'y\n' | zip -FF /tmp/codemwana-v2-truncated.zip --out /tmp/codemwana-v2.zip
+          unzip -t /tmp/codemwana-v2.zip
+          unzip -oq /tmp/codemwana-v2.zip -d .
+          rm -rf .upgrade .github/workflows/apply-codemwana-upgrade.yml
+          php tests/smoke.php
+
+      - name: Commit the upgraded platform
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Upgrade CodeMwana to production learning platform"
+          git push origin HEAD:main
