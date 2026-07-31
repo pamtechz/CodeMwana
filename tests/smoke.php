@@ -70,6 +70,16 @@ foreach (['installed.lock', 'setup_exists', 'database_error'] as $declaration) {
     if (!str_contains($installation, $declaration)) $failures[] = "Intelligent installation service is missing: {$declaration}";
 }
 
+$database = (string) file_get_contents($root . '/app/Database.php');
+if (!str_contains($database, 'information_schema.tables')) $failures[] = 'MySQL table detection must use information_schema.tables.';
+if (str_contains($database, "SHOW TABLES LIKE ?")) $failures[] = 'Native prepared SHOW TABLES detection must not be used.';
+if (!str_contains($database, 'table_schema = DATABASE()')) $failures[] = 'MySQL table detection must be scoped to the configured database.';
+
+$setupSource = (string) file_get_contents($root . '/setup.php');
+foreach (['Database::reset()', 'verifiedAdministrator', 'Installation data could not be verified'] as $declaration) {
+    if (!str_contains($setupSource, $declaration)) $failures[] = "Post-install database verification is missing: {$declaration}";
+}
+
 $responsiveCss = (string) file_get_contents($root . '/assets/css/app-v3.css');
 foreach (['@media(max-width:1024px)', '@media(max-width:900px)', '@media(max-width:760px)', '@media(max-width:480px)', '.studio-mobile-tabs'] as $rule) {
     if (!str_contains($responsiveCss, $rule)) $failures[] = "Responsive stylesheet is missing rule: {$rule}";

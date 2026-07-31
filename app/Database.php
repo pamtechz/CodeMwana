@@ -96,11 +96,20 @@ final class Database
 
     public static function tableExists(string $table): bool
     {
+        if ($table === '' || !preg_match('/^[A-Za-z0-9_]+$/', $table)) return false;
         try {
             if (self::driver() === 'sqlite') {
-                return (bool) self::fetch("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?", [$table]);
+                return (bool) self::scalar(
+                    "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1",
+                    [$table],
+                    false
+                );
             }
-            return (bool) self::fetch('SHOW TABLES LIKE ?', [$table]);
+            return (bool) self::scalar(
+                'SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ? LIMIT 1',
+                [$table],
+                false
+            );
         } catch (Throwable) {
             return false;
         }

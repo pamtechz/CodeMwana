@@ -49,6 +49,18 @@ if (is_post() && !$installed && !$connectionError) {
             }
             require_once base_path('database/seed.php');
             seed_database($pdo, $data);
+
+            // Reconnect before reporting success. This catches wrong database
+            // selection, failed persistence and host-specific table probes.
+            Database::reset();
+            $verifiedAdministrator = Database::fetch(
+                "SELECT id FROM users WHERE LOWER(email) = LOWER(?) AND role = 'admin' AND status = 'active' LIMIT 1",
+                [$data['email']]
+            );
+            if (!Database::tableExists('users') || !Database::tableExists('site_settings') || !$verifiedAdministrator) {
+                throw new RuntimeException('Installation data could not be verified after reconnecting to the configured database.');
+            }
+
             Installation::markInstalled(Migrator::VERSION);
             clear_old();
             flash('success', 'CodeMwana is ready. Sign in with the administrator account you created.');
