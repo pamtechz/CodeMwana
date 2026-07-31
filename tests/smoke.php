@@ -10,8 +10,8 @@ $required = [
     'admin/questions.php', 'admin/settings.php', 'teacher/dashboard.php', 'teacher/learner.php',
     'app/Installation.php', 'app/Migrator.php', 'app/LanguageCatalog.php', 'app/CodeRunner.php',
     'api/save-project.php', 'api/run-code.php', 'assets/css/app.css', 'assets/css/app-v3.css',
-    'assets/js/app.js', 'assets/js/playground.js', 'database/schema_mysql.sql',
-    'database/schema_sqlite.sql', 'database/seed.php', 'README.md'
+    'assets/css/app-v4.css', 'assets/js/app.js', 'assets/js/ui-v4.js', 'assets/js/playground.js',
+    'database/schema_mysql.sql', 'database/schema_sqlite.sql', 'database/seed.php', 'README.md'
 ];
 $failures = [];
 foreach ($required as $file) {
@@ -31,7 +31,7 @@ foreach ($phpFiles as $file) {
     if ($code !== 0) $failures[] = implode("\n", $output);
 }
 
-foreach (['assets/js/app.js', 'assets/js/playground.js', 'service-worker.js'] as $script) {
+foreach (['assets/js/app.js', 'assets/js/ui-v4.js', 'assets/js/playground.js', 'service-worker.js'] as $script) {
     $path = $root . DIRECTORY_SEPARATOR . $script;
     if (is_file($path) && trim((string) shell_exec('command -v node 2>/dev/null')) !== '') {
         $output = [];
@@ -85,6 +85,24 @@ foreach (['@media(max-width:1024px)', '@media(max-width:900px)', '@media(max-wid
     if (!str_contains($responsiveCss, $rule)) $failures[] = "Responsive stylesheet is missing rule: {$rule}";
 }
 
+$modernCss = (string) file_get_contents($root . '/assets/css/app-v4.css');
+foreach (['@media(max-width:1200px)', '@media(max-width:1024px)', '@media(max-width:900px)', '@media(max-width:760px)', '@media(max-width:520px)', '@media(max-width:380px)', '.page-scroll-dock', '.scroll-edge-button', 'prefers-reduced-motion', 'viewport-fit'] as $rule) {
+    if ($rule === 'viewport-fit') continue;
+    if (!str_contains($modernCss, $rule)) $failures[] = "Modern responsive stylesheet is missing rule: {$rule}";
+}
+
+$modernJs = (string) file_get_contents($root . '/assets/js/ui-v4.js');
+foreach (['page-scroll-dock', 'enhanceHorizontalScroller', 'ResizeObserver', 'MutationObserver', 'orientationchange'] as $feature) {
+    if (!str_contains($modernJs, $feature)) $failures[] = "Modern UI script is missing feature: {$feature}";
+}
+
+$headerSource = (string) file_get_contents($root . '/partials/header.php');
+foreach (['viewport-fit=cover', 'css/app-v4.css'] as $feature) {
+    if (!str_contains($headerSource, $feature)) $failures[] = "Shared header is missing responsive declaration: {$feature}";
+}
+$footerSource = (string) file_get_contents($root . '/partials/footer.php');
+if (!str_contains($footerSource, 'js/ui-v4.js')) $failures[] = 'Shared footer is missing the UI v4 script.';
+
 $playground = (string) file_get_contents($root . '/playground.php');
 foreach (['data-language-select', 'data-file-tree', 'data-stdin', 'data-preview-frame', 'api/run-code.php'] as $feature) {
     if (!str_contains($playground, $feature)) $failures[] = "Code Lab is missing feature declaration: {$feature}";
@@ -95,4 +113,4 @@ if ($failures) {
     exit(1);
 }
 
-echo 'Smoke checks passed for ' . count($phpFiles) . " PHP files, ten languages, responsive assets and intelligent installation state.\n";
+echo 'Smoke checks passed for ' . count($phpFiles) . " PHP files, ten languages, responsive assets, modern scrolling and intelligent installation state.\n";
