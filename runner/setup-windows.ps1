@@ -23,7 +23,11 @@ function Wait-Runner([string]$Url, [int]$Attempts = 40) {
 }
 
 function Set-EnvValue([string]$Path, [string]$Key, [string]$Value) {
-    $content = Test-Path $Path ? (Get-Content -Raw -Path $Path) : ''
+    if (Test-Path $Path) {
+        $content = Get-Content -Raw -Path $Path
+    } else {
+        $content = ''
+    }
     $line = "$Key=$Value"
     $pattern = "(?m)^" + [regex]::Escape($Key) + "=.*$"
     if ([regex]::IsMatch($content, $pattern)) {
@@ -109,7 +113,9 @@ $testPayload = @{
 } | ConvertTo-Json -Depth 6
 
 $testResult = Invoke-RestMethod -Uri "$RunnerUrl/api/v2/execute" -Method Post -ContentType 'application/json' -Body $testPayload -TimeoutSec 15
-if (-not (($testResult.run.stdout ?? '') -match 'CodeMwana sandbox ready')) {
+$testOutput = ''
+if ($testResult.run -and $testResult.run.stdout) { $testOutput = [string]$testResult.run.stdout }
+if ($testOutput -notmatch 'CodeMwana sandbox ready') {
     throw 'The runner responded, but the verification program did not produce the expected output.'
 }
 
