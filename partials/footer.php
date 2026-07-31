@@ -17,6 +17,7 @@
 </footer>
 <?php endif; ?>
 <script src="<?= e(asset('js/app.js')) ?>" defer></script>
+<script src="<?= e(asset('js/ui-v4.js')) ?>" defer></script>
 <?php if (!empty($pageScript)): ?><script src="<?= e(asset('js/' . $pageScript)) ?>" defer></script><?php endif; ?>
 </body>
 </html>
