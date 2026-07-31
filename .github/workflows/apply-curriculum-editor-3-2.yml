@@ -1,0 +1,68 @@
+name: Apply CodeMwana curriculum editor 3.2
+
+on:
+  push:
+    branches:
+      - feature/curriculum-editor-3-2
+    paths:
+      - '.upgrade32/part-*'
+      - '.github/workflows/apply-curriculum-editor-3-2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-upgrade:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reconstruct and verify release
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .upgrade32/part-* > /tmp/codemwana-curriculum-3.2.b64
+          echo "a872b0876fb6078b7ccee1cfa7f619f09dcefecfef3e99794d1bd65014d6bc20  /tmp/codemwana-curriculum-3.2.b64" | sha256sum --check -
+          base64 --decode /tmp/codemwana-curriculum-3.2.b64 > /tmp/codemwana-curriculum-3.2.tar.xz
+          echo "e4e54db4bdd65d7cc3ba1511e596702dc170b705356dce03b7df3b7f2646ca39  /tmp/codemwana-curriculum-3.2.tar.xz" | sha256sum --check -
+          tar -xJf /tmp/codemwana-curriculum-3.2.tar.xz -C .
+          rm -rf .upgrade32 .github/workflows/apply-curriculum-editor-3-2.yml
+
+      - name: Run application smoke checks
+        run: php tests/smoke.php
+
+      - name: Validate SQLite schema and editor drafts
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import sqlite3
+          from pathlib import Path
+
+          schema = Path('database/schema_sqlite.sql').read_text(encoding='utf-8')
+          connection = sqlite3.connect(':memory:')
+          connection.executescript(schema)
+          tables = {
+              row[0]
+              for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
+          }
+          assert 'editor_drafts' in tables
+          columns = {
+              row[1]
+              for row in connection.execute('PRAGMA table_info(editor_drafts)')
+          }
+          assert {'user_id', 'draft_key', 'payload_json', 'updated_at'} <= columns
+          print('SQLite curriculum editor schema validation passed')
+          PY
+
+      - name: Commit verified production source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Upgrade curriculum management with Word-style editing and autosave drafts"
+          git push origin HEAD:feature/curriculum-editor-3-2
