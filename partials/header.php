@@ -12,7 +12,7 @@ $isRootDashboard = basename($currentPath) === 'dashboard.php' && !str_contains($
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#5B4BDB">
     <meta name="description" content="<?= e($pageDescription) ?>">
     <title><?= e(page_title($pageTitle)) ?></title>
@@ -20,6 +20,7 @@ $isRootDashboard = basename($currentPath) === 'dashboard.php' && !str_contains($
     <link rel="icon" href="<?= e(asset('img/favicon.svg')) ?>" type="image/svg+xml">
     <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/app-v3.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset('css/app-v4.css')) ?>">
 </head>
 <body class="<?= e(trim(($user ? 'authenticated ' : 'public ') . $bodyClass)) ?>">
 <a class="skip-link" href="#main-content">Skip to main content</a>
