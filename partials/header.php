@@ -2,6 +2,7 @@
 $pageTitle = $pageTitle ?? '';
 $bodyClass = $bodyClass ?? '';
 $pageDescription = $pageDescription ?? setting('site_description', 'Programming learning platform for children.');
+$pageStyles = $pageStyles ?? [];
 $user = current_user();
 $siteName = (string) setting('site_name', 'CodeMwana');
 $tagline = (string) setting('site_tagline', 'Learn. Build. Shine.');
@@ -21,6 +22,7 @@ $isRootDashboard = basename($currentPath) === 'dashboard.php' && !str_contains($
     <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/app-v3.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/app-v4.css')) ?>">
+    <?php foreach ((array) $pageStyles as $style): ?><link rel="stylesheet" href="<?= e(asset('css/' . ltrim((string) $style, '/'))) ?>"><?php endforeach; ?>
 </head>
 <body class="<?= e(trim(($user ? 'authenticated ' : 'public ') . $bodyClass)) ?>">
 <a class="skip-link" href="#main-content">Skip to main content</a>
