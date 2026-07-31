@@ -1,0 +1,35 @@
+name: Apply CodeMwana installation hotfix
+
+on:
+  push:
+    paths:
+      - 'tools/apply-installation-hotfix.py'
+      - '.github/workflows/apply-installation-hotfix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch installation detection
+        run: python3 tools/apply-installation-hotfix.py
+
+      - name: Validate PHP and installation checks
+        run: php tests/smoke.php
+
+      - name: Commit verified hotfix
+        run: |
+          set -euo pipefail
+          rm -f tools/apply-installation-hotfix.py .github/workflows/apply-installation-hotfix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Fix installation detection on MySQL and MariaDB"
+          git push origin HEAD:main
