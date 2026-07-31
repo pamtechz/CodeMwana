@@ -1,5 +1,5 @@
 param(
-    [string[]]$Runtimes = @('python', 'php', 'go', 'c', 'c++')
+    [string[]]$Runtimes = @('python', 'php', 'go', 'gcc')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -75,7 +75,7 @@ Push-Location (Join-Path $SourceRoot 'cli')
 try {
     npm install --no-audit --no-fund
     foreach ($runtime in $Runtimes) {
-        Write-Host "Installing Piston runtime: $runtime" -ForegroundColor Cyan
+        Write-Host "Installing Piston package: $runtime" -ForegroundColor Cyan
         node index.js -u $RunnerUrl ppman install $runtime
     }
 } finally {
@@ -92,7 +92,7 @@ foreach ($runtime in $installed) {
 $expected = @('python', 'php', 'go', 'c', 'c++')
 $missing = @($expected | Where-Object { $_ -notin $availableNames })
 if ($missing.Count -gt 0) {
-    throw "Runner started, but these runtimes were not detected: $($missing -join ', '). Run the script again or inspect the Piston CLI output."
+    throw "Runner started, but these language aliases were not detected: $($missing -join ', '). Run the script again or inspect the Piston CLI output."
 }
 
 $envPath = Join-Path $ProjectRoot '.env'
