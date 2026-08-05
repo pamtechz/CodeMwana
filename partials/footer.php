@@ -18,6 +18,12 @@
 <?php endif; ?>
 <script src="<?= e(asset('js/app.js')) ?>" defer></script>
 <script src="<?= e(asset('js/ui-v4.js')) ?>" defer></script>
-<?php if (!empty($pageScript)): ?><script src="<?= e(asset('js/' . $pageScript)) ?>" defer></script><?php endif; ?>
+<?php
+$pageScripts = is_array($pageScripts ?? null) ? $pageScripts : [];
+if (!empty($pageScript)) $pageScripts[] = $pageScript;
+foreach (array_unique(array_filter($pageScripts)) as $script):
+?>
+<script src="<?= e(asset('js/' . $script)) ?>" defer></script>
+<?php endforeach; ?>
 </body>
 </html>
