@@ -46,6 +46,7 @@ $payload = [
     'files' => $workspace,
     'stdin' => $stdin,
     'runnerConfigured' => CodeRunner::configured(),
+    'browserRunners' => ['python', 'php'],
     'languages' => array_values(array_map(static function (array $language): array {
         return [
             'slug' => $language['slug'],
@@ -64,7 +65,7 @@ $payload = [
 
 $pageTitle = 'Code Lab';
 $bodyClass = 'code-lab-page';
-$pageScript = 'playground.js';
+$pageScripts = ['playground.js', 'browser-runners.js'];
 require base_path('partials/header.php');
 ?>
 <section class="code-studio" data-code-lab data-save-url="<?= e(url('api/save-project.php')) ?>" data-run-url="<?= e(url('api/run-code.php')) ?>" data-csrf="<?= e(csrf_token()) ?>">
@@ -85,7 +86,7 @@ require base_path('partials/header.php');
                     <option value="<?= e($language['slug']) ?>" <?= $language['slug'] === $activeSlug ? 'selected' : '' ?>><?= e($language['name']) ?> · <?= e($language['category']) ?></option>
                 <?php endforeach; ?>
             </select>
-            <span class="runner-state <?= CodeRunner::configured() ? 'ready' : '' ?>" data-runner-state><?= CodeRunner::configured() ? 'Remote runner ready' : 'Browser runtimes ready' ?></span>
+            <span class="runner-state ready" data-runner-state>Python and PHP browser runtimes ready<?= CodeRunner::configured() ? ' · External compiler connected' : '' ?></span>
         </div>
         <div class="studio-actions">
             <span class="save-status" data-save-status><?= $project ? 'Saved' : 'New project' ?></span>
@@ -166,12 +167,12 @@ require base_path('partials/header.php');
             <div class="studio-panel-head"><div><strong>Standard input</strong><small>Text supplied to programs that read from input.</small></div><button class="studio-icon-button" type="button" data-close-stdin aria-label="Close standard input panel"><?= icon('x') ?></button></div>
             <label for="standard-input">Program input</label>
             <textarea id="standard-input" rows="8" data-stdin></textarea>
-            <p>Each line is sent in order. Browser preview projects may ignore standard input.</p>
+            <p>Each line is sent in order. Python input() and common PHP STDIN reads are supported by the browser runtimes.</p>
         </div>
     </aside>
 
     <footer class="studio-footer">
-        <span><?= icon('shield-check') ?> Browser previews run in a sandbox. Server and compiled languages require the configured isolated runner.</span>
+        <span><?= icon('shield-check') ?> HTML, CSS, JavaScript, React, Next.js, MwanaCode, Python and PHP run without installing another application. C, C++ and Go require an external compiler.</span>
         <span data-workspace-size>0 characters</span>
     </footer>
 </section>
