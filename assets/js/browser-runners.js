@@ -7,6 +7,7 @@
   const supported = new Set(['python', 'php']);
   const compiled = new Set(['c', 'cpp', 'go']);
   const codapiUrl = 'https://unpkg.com/@antonz/codapi@0.20.0/dist/snippet.js';
+  const logRunUrl = lab.dataset.logRunUrl || new URL('api/log-browser-run.php', document.baseURI).toString();
   const stateNode = lab.querySelector('[data-code-lab-state]');
   const initial = JSON.parse(stateNode?.textContent || '{}');
   const languageSelect = lab.querySelector('[data-language-select]');
@@ -123,7 +124,7 @@
   }
 
   function logBrowserRun(language, result, elapsed, standardInput) {
-    if (!lab.dataset.logRunUrl) return;
+    if (!logRunUrl) return;
     const payload = {
       project_id: currentProjectId(),
       language,
@@ -134,7 +135,7 @@
       execution_time_ms: Math.max(0, Math.round(elapsed)),
       stdin: standardInput,
     };
-    fetch(lab.dataset.logRunUrl, {
+    fetch(logRunUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': lab.dataset.csrf },
       body: JSON.stringify(payload),
