@@ -11,8 +11,9 @@ $required = [
     'teacher/dashboard.php', 'teacher/learner.php', 'app/Installation.php', 'app/Migrator.php',
     'app/LanguageCatalog.php', 'app/CodeRunner.php', 'api/save-project.php', 'api/run-code.php',
     'assets/css/app.css', 'assets/css/app-v3.css', 'assets/css/app-v4.css', 'assets/css/curriculum.css',
-    'assets/js/app.js', 'assets/js/ui-v4.js', 'assets/js/playground.js', 'assets/js/curriculum.js',
-    'database/schema_mysql.sql', 'database/schema_sqlite.sql', 'database/seed.php', 'README.md'
+    'assets/js/app.js', 'assets/js/ui-v4.js', 'assets/js/playground.js', 'assets/js/browser-runners.js',
+    'assets/js/curriculum.js', 'database/schema_mysql.sql', 'database/schema_sqlite.sql',
+    'database/seed.php', 'README.md'
 ];
 
 $failures = [];
@@ -33,7 +34,7 @@ foreach ($phpFiles as $file) {
     if ($code !== 0) $failures[] = implode("\n", $output);
 }
 
-foreach (['assets/js/app.js', 'assets/js/ui-v4.js', 'assets/js/playground.js', 'assets/js/curriculum.js', 'service-worker.js'] as $script) {
+foreach (['assets/js/app.js', 'assets/js/ui-v4.js', 'assets/js/playground.js', 'assets/js/browser-runners.js', 'assets/js/curriculum.js', 'service-worker.js'] as $script) {
     $path = $root . DIRECTORY_SEPARATOR . $script;
     if (is_file($path) && trim((string) shell_exec('command -v node 2>/dev/null')) !== '') {
         $output = [];
@@ -121,8 +122,23 @@ foreach (['data-document-editor', 'data-editor-surface', 'content_html', 'Curric
 }
 
 $playground = (string) file_get_contents($root . '/playground.php');
-foreach (['data-language-select', 'data-file-tree', 'data-stdin', 'data-preview-frame', 'api/run-code.php'] as $feature) {
+foreach (['data-language-select', 'data-file-tree', 'data-stdin', 'data-preview-frame', 'api/run-code.php', 'browser-runners.js', "'browserRunners' => ['python', 'php']"] as $feature) {
     if (!str_contains($playground, $feature)) $failures[] = "Code Lab is missing feature declaration: {$feature}";
+}
+
+$browserRunners = (string) file_get_contents($root . '/assets/js/browser-runners.js');
+foreach (['@antonz/codapi@0.20.0', "new Set(['python', 'php'])", "setAttribute('engine', 'wasi')", 'pythonSource', 'phpSource', 'codapi-snippet'] as $feature) {
+    if (!str_contains($browserRunners, $feature)) $failures[] = "Browser runner module is missing feature: {$feature}";
+}
+
+$serviceWorker = (string) file_get_contents($root . '/service-worker.js');
+foreach (['codemwana-static-v6', 'assets/js/browser-runners.js'] as $feature) {
+    if (!str_contains($serviceWorker, $feature)) $failures[] = "Service worker is missing browser runtime cache declaration: {$feature}";
+}
+
+$footerSource = (string) file_get_contents($root . '/partials/footer.php');
+foreach (['$pageScripts', 'array_unique', "asset('js/' . $script)"] as $feature) {
+    if (!str_contains($footerSource, $feature)) $failures[] = "Shared footer is missing multi-script support: {$feature}";
 }
 
 if ($failures) {
@@ -130,4 +146,4 @@ if ($failures) {
     exit(1);
 }
 
-echo 'Smoke checks passed for ' . count($phpFiles) . " PHP files, ten languages, responsive curriculum pages, modern scrolling and intelligent installation state.\n";
+echo 'Smoke checks passed for ' . count($phpFiles) . " PHP files, ten languages, no-install Python/PHP runtimes, responsive curriculum pages, modern scrolling and intelligent installation state.\n";
