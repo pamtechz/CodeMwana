@@ -137,7 +137,7 @@ foreach (['codemwana-static-v6', 'assets/js/browser-runners.js'] as $feature) {
 }
 
 $footerSource = (string) file_get_contents($root . '/partials/footer.php');
-foreach (['$pageScripts', 'array_unique', "asset('js/' . $script)"] as $feature) {
+foreach (['$pageScripts', 'array_unique', 'asset(\'js/\' . $script)'] as $feature) {
     if (!str_contains($footerSource, $feature)) $failures[] = "Shared footer is missing multi-script support: {$feature}";
 }
 
