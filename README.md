@@ -1,4 +1,4 @@
-# CodeMwana 3.0
+# CodeMwana 3.3
 
 **ICT4410 Question 11:** A web application that teaches children basic programming skills and concepts.
 
@@ -27,7 +27,11 @@ Each workspace supports database-backed starter files, multiple project files, s
 - **HTML and CSS:** live sandboxed page preview.
 - **JavaScript:** isolated browser execution with captured console messages.
 - **React and Next.js:** sandboxed component preview. Server-only Next.js features require a full Node deployment.
-- **Python, PHP, Go, C and C++:** remote isolated execution through a configured Piston-compatible runner.
+- **Python:** free WebAssembly/WASI execution in the learner's browser with no API key and no local Python installation.
+- **PHP:** free WebAssembly/WASI execution in the learner's browser with no API key and no local PHP runtime installation for learner programs.
+- **Go, C and C++:** optional remote isolated execution through a configured Piston-compatible runner. Without a runner, these workspaces can still be written and saved.
+
+The first Python run downloads approximately 26 MB and the first PHP run approximately 13 MB from the Codapi browser-runtime CDN. Modern browsers cache those runtime files, so subsequent runs are much faster.
 
 CodeMwana never runs untrusted learner code directly through PHP on the application server.
 
@@ -42,6 +46,8 @@ CodeMwana never runs untrusted learner code directly through PHP on the applicat
 - Learner dashboard, badges, reporting and optional leaderboard
 - Teacher performance reports and announcement management
 - Administrator user, curriculum, assessment and platform operations
+- Dedicated responsive curriculum path and lesson editor pages
+- Word-style curriculum lesson authoring with local draft protection
 - Compact responsive layouts for phones, tablets, laptops and desktops
 - Progressive Web App assets and offline fallback
 
@@ -51,7 +57,9 @@ CodeMwana never runs untrusted learner code directly through PHP on the applicat
 - PDO MySQL for MySQL/MariaDB, or PDO SQLite for SQLite
 - MySQL 8 / MariaDB 10.4 or newer when using MySQL
 - Apache or another PHP-capable web server
-- Optional isolated code runner for Python, PHP, Go, C and C++
+- A modern browser with WebAssembly support
+- Internet access for the initial Python or PHP browser-runtime download
+- Optional isolated code runner only when Go, C and C++ execution is required
 
 ## XAMPP installation
 
@@ -69,9 +77,11 @@ CodeMwana records an installation lock and verifies the database. Removing `setu
 
 No fixed demonstration passwords or fake learner accounts are seeded.
 
-## Optional remote runner
+## Optional external compiler
 
-Configure an isolated Piston-compatible runner in `.env`:
+No runner configuration is required for MwanaCode, HTML, CSS, JavaScript, React, Next.js, Python or PHP.
+
+Configure an isolated Piston-compatible runner only when learners must execute Go, C or C++:
 
 ```env
 CODE_RUNNER_URL=https://runner.example.org
@@ -79,26 +89,27 @@ CODE_RUNNER_TOKEN=
 CODE_RUNNER_TIMEOUT=15
 ```
 
-When `CODE_RUNNER_URL` is empty, MwanaCode and the five browser-preview modes remain usable. Remote languages display a configuration message and projects can still be saved.
+When `CODE_RUNNER_URL` is empty, Go, C and C++ display a clear external-compiler message. Their projects remain editable and can still be saved.
 
-## Updating an existing CodeMwana 2.0 installation
+## Updating an existing installation
 
 1. Back up the database and files.
-2. Deploy the CodeMwana 3.0 source.
-3. Open the application normally.
-4. The migration service adds language, run-history and multi-file project structures.
-5. Open `system-status.php` to verify schema and runner readiness.
+2. Deploy the current CodeMwana source.
+3. Preserve the existing `.env` file.
+4. Open the application normally.
+5. Open `system-status.php` to verify installation and Code Lab readiness.
 6. Run `php tests/smoke.php`.
+7. Hard-refresh the browser or update the service worker when an older Code Lab remains cached.
 
 ## Main directories
 
 - `app/` — configuration, database, installation, migration, authentication, language and learning services
-- `assets/` — responsive CSS, Code Lab JavaScript and image assets
+- `assets/` — responsive CSS, Code Lab JavaScript, no-install browser runners and image assets
 - `database/` — MySQL/SQLite schemas and database seed content
 - `partials/` — shared public and authenticated layouts
 - `teacher/` — reporting and announcement operations
 - `admin/` — accounts, curriculum, assessments and platform settings
-- `api/` — authenticated project-save and code-run operations
+- `api/` — authenticated project-save and optional external code-run operations
 - `docs/` — deployment and testing documentation
 - `tests/` — static smoke checks
 
@@ -108,4 +119,4 @@ When `CODE_RUNNER_URL` is empty, MwanaCode and the five browser-preview modes re
 php tests/smoke.php
 ```
 
-The smoke test validates required files, PHP and JavaScript syntax, responsive assets, intelligent installation declarations, ten database language definitions and the required database tables.
+The smoke test validates required files, PHP and JavaScript syntax, no-install Python/PHP runtime declarations, responsive assets, curriculum pages, intelligent installation declarations, ten database language definitions and the required database tables.
