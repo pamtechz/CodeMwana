@@ -9,7 +9,8 @@ $checks = [
     ['Installation lock', $state['lock_exists'] ? 'Present' : 'Not present', $state['lock_exists'] || $state['installed']],
     ['Setup file', $state['setup_exists'] ? 'Present' : 'Removed', $state['installed'] || $state['setup_exists']],
     ['Schema version', $state['schema_version'] ?: 'Not detected', $state['installed']],
-    ['Remote runner', CodeRunner::configured() ? 'Configured' : 'Optional—browser languages only', true],
+    ['Browser runtimes', 'Python and PHP available without an API key', true],
+    ['External compiler', CodeRunner::configured() ? 'Configured for C, C++ and Go' : 'Optional—C, C++ and Go cannot run', true],
 ];
 $pageTitle = 'System status';
 $bodyClass = 'system-status-page';
@@ -17,7 +18,7 @@ require base_path('partials/header.php');
 ?>
 <section class="section compact-section">
     <div class="container narrow">
-        <div class="page-intro compact-intro"><div><span class="eyebrow">Operational diagnostics</span><h1>CodeMwana system status</h1><p>This page checks installation, database and code-runner readiness without sending the application back to setup.php.</p></div></div>
+        <div class="page-intro compact-intro"><div><span class="eyebrow">Operational diagnostics</span><h1>CodeMwana system status</h1><p>This page checks installation, database and Code Lab readiness without sending the application back to setup.php.</p></div></div>
         <section class="panel status-check-list">
             <?php foreach ($checks as [$label, $value, $ok]): ?>
                 <div class="status-check-row"><span class="status-check-icon <?= $ok ? 'success' : 'danger' ?>"><?= icon($ok ? 'check-circle' : 'alert-circle') ?></span><div><strong><?= e($label) ?></strong><small><?= e($value) ?></small></div></div>
