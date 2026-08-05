@@ -7,6 +7,8 @@
   const supported = new Set(['python', 'php']);
   const compiled = new Set(['c', 'cpp', 'go']);
   const codapiUrl = 'https://unpkg.com/@antonz/codapi@0.20.0/dist/snippet.js';
+  const stateNode = lab.querySelector('[data-code-lab-state]');
+  const initial = JSON.parse(stateNode?.textContent || '{}');
   const languageSelect = lab.querySelector('[data-language-select]');
   const editor = lab.querySelector('[data-code-editor]');
   const stdin = lab.querySelector('[data-stdin]');
@@ -115,6 +117,31 @@
     return language === 'python' ? pythonSource(source, standardInput) : phpSource(source, standardInput);
   }
 
+  function currentProjectId() {
+    const queryId = Number(new URLSearchParams(window.location.search).get('project') || 0);
+    return queryId > 0 ? queryId : Number(initial.projectId || 0);
+  }
+
+  function logBrowserRun(language, result, elapsed, standardInput) {
+    if (!lab.dataset.logRunUrl) return;
+    const payload = {
+      project_id: currentProjectId(),
+      language,
+      status: result.ok === false ? 'failed' : 'completed',
+      stdout: String(result.stdout || ''),
+      stderr: String(result.stderr || ''),
+      exit_code: result.ok === false ? 1 : 0,
+      execution_time_ms: Math.max(0, Math.round(elapsed)),
+      stdin: standardInput,
+    };
+    fetch(lab.dataset.logRunUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': lab.dataset.csrf },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    }).catch(() => {});
+  }
+
   async function executeWithCodapi(language, source, standardInput) {
     await loadCodapi();
 
@@ -173,7 +200,8 @@
 
     const started = performance.now();
     try {
-      const result = await executeWithCodapi(language, editor.value, stdin?.value || '');
+      const standardInput = stdin?.value || '';
+      const result = await executeWithCodapi(language, editor.value, standardInput);
       output.textContent = '';
       if (result.stdout) write(String(result.stdout).trimEnd());
       if (result.stderr) write(String(result.stderr).trimEnd(), true);
@@ -181,9 +209,12 @@
       const elapsed = Number(result.elapsed ?? result.duration ?? Math.round(performance.now() - started));
       write(`\nProcess finished${result.ok === false ? ' with errors' : ''} · ${Math.max(0, Math.round(elapsed))} ms`);
       if (result.ok === false) output.classList.add('has-error');
+      logBrowserRun(language, result, elapsed, standardInput);
     } catch (error) {
       output.textContent = '';
-      write(error?.message || String(error), true);
+      const message = error?.message || String(error);
+      write(message, true);
+      logBrowserRun(language, { ok: false, stdout: '', stderr: message }, performance.now() - started, stdin?.value || '');
     } finally {
       running = false;
       runButton.disabled = false;
