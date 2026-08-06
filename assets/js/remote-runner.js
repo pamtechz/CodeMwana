@@ -4,7 +4,7 @@
   const lab = document.querySelector('[data-code-lab]');
   if (!lab) return;
 
-  const supported = new Set(['c', 'cpp', 'go']);
+  const supported = new Set(['python', 'php', 'c', 'cpp', 'go']);
   const stateNode = lab.querySelector('[data-code-lab-state]');
   const initial = JSON.parse(stateNode?.textContent || '{}');
   const languageMap = new Map((initial.languages || []).map((language) => [language.slug, language]));
@@ -29,8 +29,11 @@
   let managedFiles = {};
   let frameSequence = 0;
   let running = false;
+  let syncing = false;
 
   const embedLanguages = {
+    python: 'python',
+    php: 'php',
     c: 'c',
     cpp: 'cpp',
     go: 'go',
@@ -94,11 +97,11 @@
     return `${fallbackBaseUrl}/${embedLanguages[language]}?${params.toString()}`;
   }
 
-  function setMobileEditorView() {
+  function setMobileView(view) {
     if (!mobileGrid || window.innerWidth > 900) return;
-    mobileGrid.dataset.mobileActive = 'editor';
+    mobileGrid.dataset.mobileActive = view;
     lab.querySelectorAll('[data-mobile-view]').forEach((button) => {
-      button.classList.toggle('active', button.dataset.mobileView === 'editor');
+      button.classList.toggle('active', button.dataset.mobileView === view);
     });
   }
 
@@ -124,7 +127,7 @@
   }
 
   function schedulePopulate(sequence, triggerRun = false) {
-    [0, 400, 1100].forEach((delay, index) => {
+    [0, 350, 950].forEach((delay, index) => {
       window.setTimeout(() => {
         if (sequence !== frameSequence || activeLanguage() !== managedLanguage) return;
         populateManagedEditor(managedFiles, triggerRun && index === 2);
@@ -132,16 +135,20 @@
     });
   }
 
+  function deactivateManagedEditor() {
+    delete lab.dataset.managedEditor;
+    if (managedShell) managedShell.hidden = true;
+  }
+
   function activateManagedEditor() {
     const language = activeLanguage();
     if (!supported.has(language)) {
-      delete lab.dataset.managedEditor;
-      if (managedShell) managedShell.hidden = true;
+      deactivateManagedEditor();
       return;
     }
 
     lab.dataset.managedEditor = 'true';
-    setMobileEditorView();
+    setMobileView('editor');
     if (executionLabel) executionLabel.textContent = 'Managed online workspace';
     if (runnerState) {
       runnerState.textContent = 'Online execution ready';
@@ -154,14 +161,13 @@
     if (managedLanguage !== language) {
       managedLanguage = language;
       managedFiles = starterFiles(language);
-      const localMain = mainFileName(managedFiles);
-      if (editor?.value && localMain) managedFiles[localMain] = editor.value;
+      const main = mainFileName(managedFiles);
+      if (editor?.value && main) managedFiles[main] = editor.value;
     }
 
     const url = embedUrl(language);
     if (!url) {
-      managedShell.hidden = true;
-      delete lab.dataset.managedEditor;
+      deactivateManagedEditor();
       return;
     }
 
@@ -189,31 +195,41 @@
     if (candidate && typeof candidate === 'object') {
       return normaliseFiles(candidate);
     }
+    if (typeof candidate === 'string' || typeof data?.content === 'string') {
+      return {
+        [mainFileName()]: String(typeof candidate === 'string' ? candidate : data.content),
+      };
+    }
     return {};
   }
 
   function openLocalFile(name) {
-    const buttons = Array.from(lab.querySelectorAll('[data-open-file]'));
-    const button = buttons.find((item) => item.dataset.openFile === name);
+    const button = Array.from(lab.querySelectorAll('[data-open-file]'))
+      .find((item) => item.dataset.openFile === name);
     if (button) button.click();
   }
 
   function syncManagedToCodeMwana() {
-    if (!supported.has(activeLanguage()) || !editor) return;
+    if (syncing || !supported.has(activeLanguage()) || !editor) return;
     const files = normaliseFiles(managedFiles);
     const names = Object.keys(files);
     if (!names.length) return;
 
-    names.forEach((name) => {
-      openLocalFile(name);
-      editor.value = files[name];
-      editor.dispatchEvent(new Event('input', { bubbles: true }));
-    });
+    syncing = true;
+    try {
+      names.forEach((name) => {
+        openLocalFile(name);
+        editor.value = files[name];
+        editor.dispatchEvent(new Event('input', { bubbles: true }));
+      });
 
-    const main = mainFileName(files);
-    openLocalFile(main);
-    editor.value = files[main] || '';
-    editor.dispatchEvent(new Event('input', { bubbles: true }));
+      const main = mainFileName(files);
+      openLocalFile(main);
+      editor.value = files[main] || '';
+      editor.dispatchEvent(new Event('input', { bubbles: true }));
+    } finally {
+      syncing = false;
+    }
   }
 
   function workspace() {
@@ -224,10 +240,7 @@
   function selectConsole() {
     const tab = lab.querySelector('[data-output-tab="console"]');
     if (tab && !tab.classList.contains('active')) tab.click();
-    if (window.innerWidth <= 900) {
-      const mobile = lab.querySelector('[data-mobile-view="output"]');
-      if (mobile) mobile.click();
-    }
+    setMobileView('output');
   }
 
   function clearConsole() {
@@ -256,12 +269,12 @@
   }
 
   function runInManagedWorkspace(files) {
-    setMobileEditorView();
+    setMobileView('editor');
     populateManagedEditor(files, false);
-    window.setTimeout(() => populateManagedEditor(files, true), 420);
+    window.setTimeout(() => populateManagedEditor(files, true), 360);
   }
 
-  async function runRemoteProgram() {
+  async function runManagedProgram() {
     const language = activeLanguage();
     if (!supported.has(language) || running) return;
 
@@ -326,7 +339,7 @@
     if (runTarget && supported.has(activeLanguage())) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      runRemoteProgram();
+      runManagedProgram();
       return;
     }
 
@@ -341,7 +354,7 @@
     if (event.key === 'Enter') {
       event.preventDefault();
       event.stopImmediatePropagation();
-      runRemoteProgram();
+      runManagedProgram();
     }
     if (event.key.toLowerCase() === 's') {
       syncManagedToCodeMwana();
