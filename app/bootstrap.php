@@ -57,6 +57,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 require_once __DIR__ . '/Database.php';
 require_once __DIR__ . '/Installation.php';
 require_once __DIR__ . '/LanguageCatalog.php';
+require_once __DIR__ . '/PublicPages.php';
 require_once __DIR__ . '/Migrator.php';
 require_once __DIR__ . '/CodeRunner.php';
 
