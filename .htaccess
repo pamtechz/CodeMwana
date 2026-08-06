@@ -1,17 +1,20 @@
 Options -Indexes
 DirectoryIndex index.php
 
-<IfModule mod_headers.c>
-  Header always set X-Content-Type-Options "nosniff"
-  Header always set X-Frame-Options "SAMEORIGIN"
-  Header always set Referrer-Policy "strict-origin-when-cross-origin"
-  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+# Security headers are generated centrally by app/bootstrap.php. Keeping them
+# out of Apache prevents duplicate CSP headers from being combined by browsers.
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Deny hidden files and directories while preserving ACME certificates.
+  RewriteRule "(^|/)\.(?!well-known(?:/|$))" - [F,L]
+
+  # These directories are application internals and must never be served over
+  # HTTP. PHP can still read and include them from the local filesystem.
+  RewriteRule "^(?:app|config|database|docs|partials|storage|tests)(?:/|$)" - [F,L,NC]
 </IfModule>
 
-<FilesMatch "^\.env">
-  Require all denied
-</FilesMatch>
-
-<FilesMatch "\.(sql|md)$">
+<FilesMatch "^(?:\.env(?:\..*)?|composer\.(?:json|lock)|package(?:-lock)?\.json|phpunit\.xml(?:\.dist)?|.*\.(?:sql|md|lock|log|ini|ya?ml))$">
   Require all denied
 </FilesMatch>
