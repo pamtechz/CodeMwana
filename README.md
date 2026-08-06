@@ -1,12 +1,10 @@
-# CodeMwana 3.4
+# CodeMwana 3.5
 
-**ICT4410 Question 11:** A web application that teaches children basic programming skills and concepts.
+CodeMwana is a responsive PHP learning platform for children, schools and young creators. It combines guided lessons, assessments, project work, progress tracking and role-based teaching operations.
 
-CodeMwana is a responsive, database-backed PHP learning platform for learner, teacher and administrator operations. Curriculum, assessments, progress, projects, announcements, platform settings and Code Lab language definitions persist in MySQL/MariaDB or SQLite.
+## Learning workspaces
 
-## Code Lab
-
-Code Lab includes a guided MwanaCode workspace and ten mainstream programming workspaces:
+Code Lab provides MwanaCode and ten mainstream programming workspaces:
 
 1. HTML
 2. CSS
@@ -19,70 +17,68 @@ Code Lab includes a guided MwanaCode workspace and ten mainstream programming wo
 9. C
 10. C++
 
-Each workspace supports database-backed starter files, project ownership, standard input, version history and execution records.
+MwanaCode and browser projects run through controlled browser previews. Python, PHP, C, C++ and Go share one synchronized managed editor. Source files, project ownership, standard input, saved versions and execution records remain connected to the learner account.
 
-### Execution model
+For managed languages, the server submits code to the configured compiler API first. When that service cannot complete a request, the visible embedded workspace becomes the execution fallback without opening a second editor.
 
-- **MwanaCode:** controlled browser interpreter with step and loop limits.
-- **HTML and CSS:** sandboxed browser preview.
-- **JavaScript:** isolated browser execution with captured console messages.
-- **React and Next.js:** sandboxed component preview. Server-only Next.js features require a complete Node deployment.
-- **Python, PHP, Go, C and C++:** one synchronized managed editor. The CodeMwana Run button submits to JDoodle first. When the primary service is unavailable, out of credits, rate-limited or not configured, the same visible editor executes through the embedded workspace automatically.
+Python source receives a server-side input compatibility prelude before execution. It preserves learner source in storage while preventing `input()` from raising `EOFError` when no standard-input bytes are supplied. The prelude is inserted after any `__future__` imports.
 
-The local CodeMwana textarea and duplicate file sidebar are hidden while a managed language is selected. Project data remains synchronized with CodeMwana so Save, project ownership, version history and run logging continue to work.
+Compiler credentials remain server-side. Learner code is never executed directly by the public PHP process.
 
-JDoodle credentials stay on the server and are never included in browser JavaScript. The OneCompiler workspace loads as a normal cross-origin iframe, matching its official embed model. CodeMwana sends and accepts editor messages only through the expected `https://onecompiler.com` origin and the exact iframe window. Browser same-origin protections prevent the external frame from reading the CodeMwana document.
+## Public production behaviour
 
-When the standard-input field is completely empty, CodeMwana supplies one blank input line to managed execution. This allows beginner patterns such as `input().strip() or 'Learner'`, `fgets(STDIN)` and `getline()` to receive an empty value instead of immediately reaching EOF.
+Release 3.5 separates public guidance from operational information:
 
-CodeMwana never runs untrusted learner code directly through PHP on the application server.
+- `help.php` reads the current site name, registration state, support address, published paths and active languages.
+- About, Privacy and landing content use learner-facing language rather than deployment or database terminology.
+- System diagnostics require an administrator account.
+- The installer redirects to the normal site after installation.
+- Public service failures are generic; technical details are written only to private server logs.
+- Software versions are not displayed in the shared public shell.
+- Authenticated and utility pages are marked `noindex,nofollow`.
 
-## Platform capabilities
+## Security controls
 
-- Username or email authentication, rate limiting and secure sessions
-- Strong passwords, role-based access, CSRF protection and audit logging
-- Intelligent installation state and automatic schema migrations
-- Database-driven branding, homepage content, curriculum and languages
-- Course enrolment, ordered lessons, quizzes and persistent progress
-- Multi-file project CRUD, version history and execution logs
-- Learner dashboard, badges, reporting and optional leaderboard
-- Teacher performance reports and announcement management
-- Administrator user, curriculum, assessment and platform operations
-- Dedicated responsive curriculum path and lesson editor pages
-- Word-style lesson authoring with local draft protection
-- Responsive layouts for phones, tablets, laptops and desktops
-- Progressive Web App assets and offline fallback
+- Password hashing, secure sessions and session ID regeneration
+- Login rate limiting
+- CSRF protection on state-changing requests
+- Role-based access controls
+- Escaped output and lesson-content sanitisation
+- PHP-owned Content Security Policy
+- HSTS on HTTPS deployments
+- MIME sniffing, framing, referrer and permissions restrictions
+- No-store caching for account and application responses
+- Direct HTTP access blocked for application internals, configuration, storage, tests and database files
+- Compiler and fallback hosts restricted to approved HTTPS origins
+- Compiler paths and provider names removed from learner-visible output
+
+No design can guarantee that a public application will never be attacked. These controls reduce exposure and establish safer production defaults; hosting updates, backups, monitoring and access reviews remain operational requirements.
 
 ## Requirements
 
 - PHP 8.1 or newer
-- PDO MySQL for MySQL/MariaDB, or PDO SQLite for SQLite
-- MySQL 8 / MariaDB 10.4 or newer when using MySQL
-- Apache or another PHP-capable web server
+- PDO MySQL/MariaDB or PDO SQLite
+- MySQL 8, MariaDB 10.4 or newer when using MySQL
+- Apache with `.htaccess` support, or equivalent web-server rules
 - A modern browser
 - Internet access for managed-language editing and execution
-- Optional JDoodle credentials for primary managed execution
 
-## XAMPP installation
+## Installation
 
-1. Copy the project into `C:\xampp\htdocs\CodeMwana`.
-2. Start Apache and MySQL.
-3. Create a database named `codemwana` using `utf8mb4_unicode_ci`.
+1. Copy the project into the web root.
+2. Start the web server and database service.
+3. Create the application database.
 4. Copy `.env.example` to `.env`.
-5. Configure `APP_URL`, database values and optional JDoodle credentials.
-6. Open `http://localhost/CodeMwana/setup.php`.
-7. Enter the organisation, support address and first-administrator details.
-8. Complete installation and sign in.
-9. Delete `setup.php` after installation.
+5. Configure `APP_URL`, database credentials and managed execution credentials.
+6. Open `setup.php` once.
+7. Create the first administrator account.
+8. Sign in and verify the platform.
 
-CodeMwana records an installation lock and verifies the database. Removing `setup.php` does not cause a redirect loop. When the database is temporarily unavailable, the application displays diagnostics instead of reopening setup.
-
-No fixed demonstration passwords or fake learner accounts are seeded.
+After installation, `setup.php` redirects to the normal site. It may also be removed from the deployed server as an additional operational precaution.
 
 ## Managed execution configuration
 
 ```env
-CODE_RUNNER_PROVIDER=jdoodle
 CODE_RUNNER_TIMEOUT=20
 
 JDOODLE_API_URL=https://api.jdoodle.com/v1/execute
@@ -99,36 +95,27 @@ JDOODLE_CPP_VERSION_INDEX=3
 ONECOMPILER_EMBED_URL=https://onecompiler.com/embed
 ```
 
-When JDoodle credentials are absent or the primary call cannot be completed, CodeMwana automatically runs the program through the already visible managed workspace. Learner-facing messages remain provider-neutral; provider and fallback reasons are retained in administrator activity logs.
+The application validates the configured API host and fallback host before use. Legacy arbitrary runner URL and token settings are no longer supported.
 
-## Updating an existing installation
+## Updating an installation
 
-1. Back up the database and files.
-2. Deploy the current CodeMwana source.
-3. Preserve the existing `.env` file and add the managed execution variables above.
-4. Open the application normally.
-5. Open `system-status.php` to verify installation and Code Lab readiness.
-6. Run `php tests/smoke.php`.
-7. Unregister the old service worker or hard-refresh when an older Code Lab remains cached.
+1. Back up the database and deployed files.
+2. Pull or deploy the current source.
+3. Preserve the existing `.env` values and remove retired runner variables.
+4. Restart the PHP/Apache service.
+5. Open the application once so migration `3.5.0` can update public content.
+6. Sign in as an administrator and review `system-status.php`.
+7. Clear the previous service worker when old Code Lab JavaScript remains cached.
 
-The current service-worker cache is `codemwana-static-v9`. It includes the frame-compatibility loader and no longer caches the retired Codapi browser runner.
-
-## Main directories
-
-- `app/` — configuration, database, installation, migration, authentication, language and learning services
-- `assets/` — responsive CSS, Code Lab JavaScript and image assets
-- `database/` — MySQL/SQLite schemas and database seed content
-- `partials/` — shared public and authenticated layouts
-- `teacher/` — reporting and announcement operations
-- `admin/` — accounts, curriculum, assessments and platform settings
-- `api/` — authenticated project-save and managed code-run operations
-- `docs/` — deployment and testing documentation
-- `tests/` — static smoke checks
+Current service-worker cache: `codemwana-static-v9`.
 
 ## Validation
 
+Run both checks before deployment:
+
 ```bash
 php tests/smoke.php
+php tests/python_input_guard.php
 ```
 
-The smoke test validates PHP and JavaScript syntax when the relevant runtimes are available, ten language definitions, the five-language managed editor, JDoodle blank-input handling, OneCompiler origin compatibility, embedded fallback, responsive assets, installation state and required database tables.
+The repository also contains `.github/workflows/quality.yml`, which runs these checks for pushes to `main` and pull requests.
