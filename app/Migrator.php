@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 final class Migrator
 {
-    public const VERSION = '3.5.0';
+    public const VERSION = '3.6.0';
 
     public static function run(): void
     {
         self::ensureSchemaMeta();
+        self::ensurePublicPagesTable();
         $current = (string) Database::scalar('SELECT schema_version FROM schema_meta ORDER BY id DESC LIMIT 1', [], '0.0.0');
         if (version_compare($current, self::VERSION, '>=')) {
             self::seedLanguages();
+            PublicPages::seedDefaults();
             return;
         }
 
@@ -102,9 +104,63 @@ final class Migrator
         self::addColumn('project_versions', 'stdin', 'TEXT NULL');
 
         self::seedLanguages();
+        PublicPages::seedDefaults();
         self::refreshPublicContent();
         Database::query('UPDATE schema_meta SET schema_version = ?, updated_at = CURRENT_TIMESTAMP', [self::VERSION]);
         Installation::markInstalled(self::VERSION);
+    }
+
+    private static function ensurePublicPagesTable(): void
+    {
+        if (Database::tableExists('public_pages')) return;
+
+        if (Database::driver() === 'sqlite') {
+            Database::connection()->exec("CREATE TABLE public_pages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                slug VARCHAR(80) NOT NULL UNIQUE,
+                navigation_label VARCHAR(100) NOT NULL,
+                title VARCHAR(160) NOT NULL,
+                eyebrow VARCHAR(120) NOT NULL DEFAULT '',
+                hero_title VARCHAR(220) NOT NULL,
+                hero_text TEXT NOT NULL,
+                content_html TEXT NOT NULL,
+                meta_description VARCHAR(320) NOT NULL,
+                cta_label VARCHAR(100) NULL,
+                cta_url VARCHAR(255) NULL,
+                show_in_header INTEGER NOT NULL DEFAULT 0,
+                show_in_footer INTEGER NOT NULL DEFAULT 1,
+                is_published INTEGER NOT NULL DEFAULT 1,
+                sort_order INT NOT NULL DEFAULT 0,
+                updated_by INTEGER NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT fk_public_pages_user FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+            )");
+            return;
+        }
+
+        Database::connection()->exec("CREATE TABLE public_pages (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            slug VARCHAR(80) NOT NULL UNIQUE,
+            navigation_label VARCHAR(100) NOT NULL,
+            title VARCHAR(160) NOT NULL,
+            eyebrow VARCHAR(120) NOT NULL DEFAULT '',
+            hero_title VARCHAR(220) NOT NULL,
+            hero_text TEXT NOT NULL,
+            content_html MEDIUMTEXT NOT NULL,
+            meta_description VARCHAR(320) NOT NULL,
+            cta_label VARCHAR(100) NULL,
+            cta_url VARCHAR(255) NULL,
+            show_in_header TINYINT(1) NOT NULL DEFAULT 0,
+            show_in_footer TINYINT(1) NOT NULL DEFAULT 1,
+            is_published TINYINT(1) NOT NULL DEFAULT 1,
+            sort_order INT NOT NULL DEFAULT 0,
+            updated_by INT UNSIGNED NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            CONSTRAINT fk_public_pages_user FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL,
+            INDEX idx_public_pages_navigation (is_published, show_in_header, show_in_footer, sort_order)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     }
 
     private static function refreshPublicContent(): void
