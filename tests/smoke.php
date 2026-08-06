@@ -5,16 +5,19 @@ declare(strict_types=1);
 $root = dirname(__DIR__);
 $required = [
     '.htaccess', '.env.example', '.github/workflows/quality.yml',
-    'index.php', 'about.php', 'privacy.php', 'help.php', 'login.php', 'register.php',
+    'index.php', 'about.php', 'about-us.php', 'about-app.php', 'developers.php',
+    'contact.php', 'privacy.php', 'help.php', 'public-page.php', 'login.php', 'register.php',
     'dashboard.php', 'courses.php', 'course.php', 'lesson.php', 'quiz.php', 'playground.php',
     'projects.php', 'progress.php', 'profile.php', 'setup.php', 'system-status.php',
-    'admin/dashboard.php', 'admin/users.php', 'admin/content.php', 'teacher/dashboard.php',
+    'admin/dashboard.php', 'admin/users.php', 'admin/content.php', 'admin/settings.php',
+    'admin/public-pages.php', 'admin/public-page-edit.php', 'teacher/dashboard.php',
     'app/bootstrap.php', 'app/Installation.php', 'app/Migrator.php', 'app/LanguageCatalog.php',
-    'app/CodeRunner.php', 'api/save-project.php', 'api/run-code.php', 'assets/css/app.css',
-    'assets/css/app-v3.css', 'assets/css/app-v4.css', 'assets/css/remote-runner.css',
-    'assets/js/app.js', 'assets/js/ui-v4.js', 'assets/js/managed-frame-compat.js',
-    'assets/js/remote-runner.js', 'assets/js/playground.js', 'service-worker.js',
-    'database/schema_mysql.sql', 'database/schema_sqlite.sql', 'tests/python_input_guard.php'
+    'app/PublicPages.php', 'app/CodeRunner.php', 'api/save-project.php', 'api/run-code.php',
+    'assets/css/app.css', 'assets/css/app-v3.css', 'assets/css/app-v4.css',
+    'assets/css/remote-runner.css', 'assets/css/public-pages.css', 'assets/js/app.js',
+    'assets/js/ui-v4.js', 'assets/js/managed-frame-compat.js', 'assets/js/remote-runner.js',
+    'assets/js/playground.js', 'service-worker.js', 'database/schema_mysql.sql',
+    'database/schema_sqlite.sql', 'tests/python_input_guard.php'
 ];
 
 $failures = [];
@@ -54,12 +57,33 @@ foreach (['site_settings', 'course_enrollments', 'project_versions', 'login_atte
     }
 }
 
+require_once $root . '/app/helpers.php';
 require_once $root . '/app/LanguageCatalog.php';
+require_once $root . '/app/PublicPages.php';
+
 $languages = LanguageCatalog::definitions();
-$expected = ['html', 'css', 'javascript', 'python', 'php', 'react', 'nextjs', 'go', 'c', 'cpp'];
-$slugs = array_column($languages, 'slug');
+$expectedLanguages = ['html', 'css', 'javascript', 'python', 'php', 'react', 'nextjs', 'go', 'c', 'cpp'];
+$languageSlugs = array_column($languages, 'slug');
 if (count($languages) !== 10) $failures[] = 'Language catalogue must contain ten mainstream languages.';
-foreach ($expected as $slug) if (!in_array($slug, $slugs, true)) $failures[] = "Language catalogue is missing: {$slug}";
+foreach ($expectedLanguages as $slug) if (!in_array($slug, $languageSlugs, true)) $failures[] = "Language catalogue is missing: {$slug}";
+
+$publicDefaults = PublicPages::defaults();
+$publicSlugs = array_column($publicDefaults, 'slug');
+$expectedPages = ['about', 'about-us', 'about-app', 'developers', 'contact', 'privacy', 'help'];
+if (count($publicDefaults) !== count($expectedPages)) $failures[] = 'Public page catalogue must contain seven managed pages.';
+foreach ($expectedPages as $slug) if (!in_array($slug, $publicSlugs, true)) $failures[] = "Public page catalogue is missing: {$slug}";
+$defaultText = implode("\n", array_map(static fn (array $page): string => implode(' ', [(string) $page['hero_title'], (string) $page['hero_text'], (string) $page['content_html']]), $publicDefaults));
+foreach (['Make the first steps in coding understandable', 'Learn by creating', 'Follow ordered learning paths', 'Pamtech I.T Solutions', 'one answer per line'] as $requiredText) {
+    if (!str_contains($defaultText, $requiredText)) $failures[] = "Seeded public content is missing: {$requiredText}";
+}
+
+$sanitised = sanitize_public_html('<h2 onclick="bad()">Title</h2><script>alert(1)</script><a href="javascript:alert(1)" style="color:red">Unsafe</a><details open><summary>Help</summary><p>Text</p></details>');
+foreach (['<script', 'onclick=', 'javascript:', 'style='] as $unsafe) {
+    if (stripos($sanitised, $unsafe) !== false) $failures[] = "Public HTML sanitizer retained unsafe markup: {$unsafe}";
+}
+foreach (['<h2>', '<details open>', '<summary>'] as $safe) {
+    if (!str_contains($sanitised, $safe)) $failures[] = "Public HTML sanitizer removed required content: {$safe}";
+}
 
 $bootstrap = (string) file_get_contents($root . '/app/bootstrap.php');
 foreach ([
@@ -70,8 +94,9 @@ foreach ([
     "frame-src 'self' data: blob: https://onecompiler.com",
     "ini_set('session.use_strict_mode', '1')",
     'Cache-Control: no-store',
+    "require_once __DIR__ . '/PublicPages.php'",
 ] as $feature) {
-    if (!str_contains($bootstrap, $feature)) $failures[] = "Production response hardening is missing: {$feature}";
+    if (!str_contains($bootstrap, $feature)) $failures[] = "Production bootstrap is missing: {$feature}";
 }
 
 $apache = (string) file_get_contents($root . '/.htaccess');
@@ -84,14 +109,8 @@ if (stripos($apache, 'Content-Security-Policy') !== false || stripos($apache, 'H
 
 $codeRunner = (string) file_get_contents($root . '/app/CodeRunner.php');
 foreach ([
-    'PYTHON_INPUT_GUARD',
-    '__codemwana_safe_input',
-    'except EOFError',
-    'injectPythonInputGuard',
-    'sanitiseProgramOutput',
-    "API_HOST = 'api.jdoodle.com'",
-    "FALLBACK_HOST = 'onecompiler.com'",
-    "'_provider' => 'managed'",
+    'PYTHON_INPUT_GUARD', '__codemwana_safe_input', 'except EOFError', 'injectPythonInputGuard',
+    'sanitiseProgramOutput', "API_HOST = 'api.jdoodle.com'", "FALLBACK_HOST = 'onecompiler.com'", "'_provider' => 'managed'",
 ] as $feature) {
     if (!str_contains($codeRunner, $feature)) $failures[] = "Managed execution hardening is missing: {$feature}";
 }
@@ -101,10 +120,9 @@ foreach (['runPiston', 'CODE_RUNNER_URL', "config('app.code_runner.url'", "confi
 
 $config = (string) file_get_contents($root . '/config/app.php');
 $environment = (string) file_get_contents($root . '/.env.example');
+if (!str_contains($config, "'version' => '3.6.0'")) $failures[] = 'Application release version must be 3.6.0.';
 foreach (['CODE_RUNNER_URL', 'CODE_RUNNER_TOKEN', 'CODE_RUNNER_PROVIDER'] as $forbidden) {
-    if (str_contains($config, $forbidden) || str_contains($environment, $forbidden)) {
-        $failures[] = "Legacy runner configuration remains: {$forbidden}";
-    }
+    if (str_contains($config, $forbidden) || str_contains($environment, $forbidden)) $failures[] = "Legacy runner configuration remains: {$forbidden}";
 }
 
 $runApi = (string) file_get_contents($root . '/api/run-code.php');
@@ -113,18 +131,10 @@ foreach (['CodeRunner::isManagedLanguage', 'RunnerFallbackException', 'code_runn
 }
 
 $remoteRunner = (string) file_get_contents($root . '/assets/js/remote-runner.js');
-foreach ([
-    "new Set(['python', 'php', 'c', 'cpp', 'go'])",
-    "postMessage(message, managedOrigin)",
-    'event.origin !== managedOrigin',
-    'executionInput',
-    'payload.fallback',
-] as $feature) {
+foreach (["new Set(['python', 'php', 'c', 'cpp', 'go'])", "postMessage(message, managedOrigin)", 'event.origin !== managedOrigin', 'executionInput', 'payload.fallback'] as $feature) {
     if (!str_contains($remoteRunner, $feature)) $failures[] = "Managed editor is missing: {$feature}";
 }
-if (str_contains($remoteRunner, 'codapi-snippet') || str_contains($remoteRunner, "engine', 'wasi")) {
-    $failures[] = 'Retired browser runner code is still active.';
-}
+if (str_contains($remoteRunner, 'codapi-snippet') || str_contains($remoteRunner, "engine', 'wasi")) $failures[] = 'Retired browser runner code is still active.';
 
 $frameCompat = (string) file_get_contents($root . '/assets/js/managed-frame-compat.js');
 foreach (["removeAttribute('sandbox')", 'data-external-runner-frame'] as $feature) {
@@ -135,12 +145,10 @@ $systemStatus = (string) file_get_contents($root . '/system-status.php');
 if (!str_contains($systemStatus, "require_role('admin')")) $failures[] = 'System diagnostics must be restricted to administrators.';
 
 $setup = (string) file_get_contents($root . '/setup.php');
-if (!str_contains($setup, "if (Installation::installed()) redirect('index.php')")) {
-    $failures[] = 'The installer must be disabled after installation.';
+foreach (["if (Installation::installed()) redirect('index.php')", 'Migrator::run()', "Database::tableExists('public_pages')"] as $feature) {
+    if (!str_contains($setup, $feature)) $failures[] = "Initial setup is missing: {$feature}";
 }
-if (str_contains($setup, '<?= e(PHP_VERSION) ?>') || str_contains($setup, '<code>.env</code>')) {
-    $failures[] = 'The installer still renders implementation details.';
-}
+if (str_contains($setup, '<?= e(PHP_VERSION) ?>') || str_contains($setup, '<code>.env</code>')) $failures[] = 'The installer still renders implementation details.';
 
 $installation = (string) file_get_contents($root . '/app/Installation.php');
 foreach (['Service temporarily unavailable', 'logTechnical', 'meta name="robots" content="noindex,nofollow"'] as $feature) {
@@ -148,40 +156,56 @@ foreach (['Service temporarily unavailable', 'logTechnical', 'meta name="robots"
 }
 if (str_contains($installation, 'Open system status')) $failures[] = 'Public service failures still expose the diagnostics route.';
 
-$help = (string) file_get_contents($root . '/help.php');
-foreach (['Learning::courses', 'Learning::languages', "setting('support_email'", "setting('registration_open'", 'one answer per line'] as $feature) {
-    if (!str_contains($help, $feature)) $failures[] = "Dynamic Help centre is missing: {$feature}";
-}
-foreach (['CODE_RUNNER_URL', '.env', 'setup.php', 'JDoodle', 'OneCompiler', 'Piston', 'administrator operations', 'Installation'] as $forbidden) {
-    if (stripos($help, $forbidden) !== false) $failures[] = "Public Help centre exposes internal terminology: {$forbidden}";
+$migrator = (string) file_get_contents($root . '/app/Migrator.php');
+foreach (["VERSION = '3.6.0'", 'ensurePublicPagesTable', 'CREATE TABLE public_pages', 'PublicPages::seedDefaults()', 'refreshPublicContent'] as $feature) {
+    if (!str_contains($migrator, $feature)) $failures[] = "Public-page migration is missing: {$feature}";
 }
 
-$about = (string) file_get_contents($root . '/about.php');
-foreach (['PHP 8.1', 'PDO', 'ICT4410', 'CSRF', 'database-backed', 'relational database'] as $forbidden) {
-    if (stripos($about, $forbidden) !== false) $failures[] = "Public About page exposes internal terminology: {$forbidden}";
+$publicPageService = (string) file_get_contents($root . '/app/PublicPages.php');
+foreach (['seedDefaults', 'navigation', 'routeMap', 'resolveHtml', 'resolveUrl', 'show_in_header', 'show_in_footer', 'is_published'] as $feature) {
+    if (!str_contains($publicPageService, $feature)) $failures[] = "Public page service is missing: {$feature}";
 }
 
-$privacy = (string) file_get_contents($root . '/privacy.php');
-foreach (['setup.php', '.env', 'CSRF', 'PDO', 'password hashes'] as $forbidden) {
-    if (stripos($privacy, $forbidden) !== false) $failures[] = "Public Privacy page exposes unnecessary implementation details: {$forbidden}";
+$renderer = (string) file_get_contents($root . '/public-page.php');
+foreach (['PublicPages::find', 'PublicPages::resolveHtml', 'PublicPages::resolveUrl', 'Administrator preview', "['public-pages.css']"] as $feature) {
+    if (!str_contains($renderer, $feature)) $failures[] = "Public page renderer is missing: {$feature}";
 }
 
-$index = (string) file_get_contents($root . '/index.php');
-foreach (['database-backed', 'curriculum database', 'platform administrator', 'Loaded from the curriculum database'] as $forbidden) {
-    if (stripos($index, $forbidden) !== false) $failures[] = "Landing page exposes internal terminology: {$forbidden}";
+$routeFiles = [
+    'about.php' => 'about', 'about-us.php' => 'about-us', 'about-app.php' => 'about-app',
+    'developers.php' => 'developers', 'contact.php' => 'contact', 'privacy.php' => 'privacy', 'help.php' => 'help',
+];
+foreach ($routeFiles as $file => $slug) {
+    $source = (string) file_get_contents($root . '/' . $file);
+    if (!str_contains($source, "\$publicPageSlug = '{$slug}'") || !str_contains($source, "require __DIR__ . '/public-page.php'")) {
+        $failures[] = "Public route {$file} is not connected to {$slug}.";
+    }
+}
+
+$adminList = (string) file_get_contents($root . '/admin/public-pages.php');
+$adminEditor = (string) file_get_contents($root . '/admin/public-page-edit.php');
+foreach ([$adminList, $adminEditor] as $adminSource) {
+    if (!str_contains($adminSource, "require_role('admin')")) $failures[] = 'Public page administration must require the administrator role.';
+    if (!str_contains($adminSource, 'verify_csrf()')) $failures[] = 'Public page administration must verify CSRF tokens.';
+}
+foreach (['sanitize_public_html', 'updated_by', 'show_in_header', 'show_in_footer', 'data-document-editor', '{{support_email}}'] as $feature) {
+    if (!str_contains($adminEditor, $feature)) $failures[] = "Public page editor is missing: {$feature}";
 }
 
 $header = (string) file_get_contents($root . '/partials/header.php');
-foreach (['meta name="robots"', 'noindex,nofollow', "'setup.php', 'system-status.php'"] as $feature) {
-    if (!str_contains($header, $feature)) $failures[] = "Private-page indexing protection is missing: {$feature}";
-}
-
 $footer = (string) file_get_contents($root . '/partials/footer.php');
+foreach (['PublicPages::navigation(\'header\')', 'PublicPages::urlFor'] as $feature) {
+    if (!str_contains($header, $feature)) $failures[] = "Public header navigation is missing: {$feature}";
+}
+foreach (['PublicPages::navigation(\'footer\')', 'PublicPages::urlFor'] as $feature) {
+    if (!str_contains($footer, $feature)) $failures[] = "Public footer navigation is missing: {$feature}";
+}
 if (str_contains($footer, "config('app.version'")) $failures[] = 'The shared footer still discloses the software version.';
 
-$migrator = (string) file_get_contents($root . '/app/Migrator.php');
-foreach (["VERSION = '3.5.0'", 'refreshPublicContent', 'Multi-language Code Lab', 'Multi-file project workspace'] as $feature) {
-    if (!str_contains($migrator, $feature)) $failures[] = "Production content migration is missing: {$feature}";
+$adminDashboard = (string) file_get_contents($root . '/admin/dashboard.php');
+$adminSettings = (string) file_get_contents($root . '/admin/settings.php');
+foreach ([$adminDashboard, $adminSettings] as $source) {
+    if (!str_contains($source, 'admin/public-pages.php')) $failures[] = 'Administrator navigation does not expose public page management.';
 }
 
 $workflow = (string) file_get_contents($root . '/.github/workflows/quality.yml');
@@ -190,7 +214,7 @@ foreach (['php tests/smoke.php', 'php tests/python_input_guard.php'] as $feature
 }
 
 $serviceWorker = (string) file_get_contents($root . '/service-worker.js');
-foreach (['codemwana-static-v9', 'assets/js/managed-frame-compat.js', 'assets/js/remote-runner.js'] as $feature) {
+foreach (['assets/js/managed-frame-compat.js', 'assets/js/remote-runner.js'] as $feature) {
     if (!str_contains($serviceWorker, $feature)) $failures[] = "Service worker is missing: {$feature}";
 }
 if (str_contains($serviceWorker, 'browser-runners.js')) $failures[] = 'Service worker still caches the retired browser runner.';
@@ -200,4 +224,4 @@ if ($failures) {
     exit(1);
 }
 
-echo 'Smoke checks passed for ' . count($phpFiles) . " PHP files, production headers, protected internals, secure sessions, public content, dynamic help and managed language execution.\n";
+echo 'Smoke checks passed for ' . count($phpFiles) . " PHP files, seven database-managed public pages, safe administration, dynamic navigation and managed code execution.\n";
