@@ -1,0 +1,30 @@
+.managed-public-page .content-hero{overflow:hidden}
+.managed-public-page .content-hero-grid{align-items:center}
+.managed-page-content{min-width:0}
+.managed-page-content>*:first-child{margin-top:0}
+.managed-page-content>*:last-child{margin-bottom:0}
+.managed-page-content h2{margin-top:2rem}
+.managed-page-content h3{margin-top:1.35rem}
+.managed-page-content ul,.managed-page-content ol{display:grid;gap:.55rem;padding-left:1.35rem}
+.managed-page-content li{line-height:1.65}
+.managed-page-content details{margin:.85rem 0;border:1px solid var(--border,#e3e6ef);border-radius:14px;background:var(--surface,#fff);overflow:hidden}
+.managed-page-content summary{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.1rem;cursor:pointer;font-weight:800;list-style:none}
+.managed-page-content summary::-webkit-details-marker{display:none}
+.managed-page-content summary::after{content:'+';display:grid;place-items:center;width:1.7rem;height:1.7rem;border-radius:50%;background:var(--surface-soft,#f1f2f8);font-size:1.05rem}
+.managed-page-content details[open] summary::after{content:'−'}
+.managed-page-content details>p,.managed-page-content details>ul,.managed-page-content details>ol{margin:0;padding:0 1.1rem 1.1rem}
+.managed-page-content table{width:100%;border-collapse:collapse;margin:1.25rem 0;overflow:auto}
+.managed-page-content th,.managed-page-content td{padding:.75rem;border:1px solid var(--border,#e3e6ef);text-align:left;vertical-align:top}
+.managed-page-content pre{overflow:auto;padding:1rem;border-radius:14px;background:#151725;color:#f7f7fb}
+.managed-page-links{display:grid;gap:.35rem}
+.managed-page-links a{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.75rem 0;border-bottom:1px solid var(--border,#e3e6ef);font-weight:750;text-decoration:none}
+.managed-page-links a:last-child{border-bottom:0}
+.managed-page-links .icon{width:1rem;height:1rem}
+.public-preview-banner{margin:1rem auto 0;width:min(calc(100% - 2rem),1180px)}
+.public-page-record-list .curriculum-record-actions form{margin:0}
+.public-page-record-list .curriculum-record-actions{align-items:center}
+.token-reference-list code{display:inline-flex;padding:.22rem .45rem;border-radius:7px;background:var(--surface-soft,#f1f2f8);font-size:.78rem;overflow-wrap:anywhere}
+.public-page-editor-layout .document-page details{padding:.75rem;border:1px dashed var(--border,#dfe2eb);border-radius:10px}
+.public-page-editor-layout .document-page summary{font-weight:800;cursor:pointer}
+@media(max-width:900px){.managed-public-page .content-hero-stats{grid-template-columns:repeat(3,minmax(0,1fr))}.public-page-record-list .curriculum-record-actions{width:100%;justify-content:flex-start;flex-wrap:wrap}}
+@media(max-width:620px){.managed-public-page .content-hero-stats{grid-template-columns:1fr}.managed-page-content details{border-radius:12px}.managed-page-content summary{padding:.9rem}.managed-page-content details>p,.managed-page-content details>ul,.managed-page-content details>ol{padding:0 .9rem .9rem}.public-page-record-list .curriculum-record-actions>*{flex:1 1 auto}.public-page-record-list .curriculum-record-actions .button{width:100%}}
