@@ -170,7 +170,7 @@ foreach (['CODE_RUNNER_PROVIDER=jdoodle', 'JDOODLE_CLIENT_ID=', 'JDOODLE_CLIENT_
 }
 
 $footerSource = (string) file_get_contents($root . '/partials/footer.php');
-foreach (['$pageScripts', 'array_unique', 'managed-frame-compat.js', "in_array('remote-runner.js', $pageScripts, true)", 'asset(\'js/\' . $script)'] as $feature) {
+foreach (['$pageScripts', 'array_unique', 'managed-frame-compat.js', 'in_array(\'remote-runner.js\', $pageScripts, true)', 'asset(\'js/\' . $script)'] as $feature) {
     if (!str_contains($footerSource, $feature)) $failures[] = "Shared footer is missing managed script ordering: {$feature}";
 }
 
