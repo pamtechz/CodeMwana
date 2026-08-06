@@ -35,3 +35,6 @@ jobs:
 
       - name: Run application smoke checks
         run: php tests/smoke.php
+
+      - name: Test Python input compatibility
+        run: php tests/python_input_guard.php
