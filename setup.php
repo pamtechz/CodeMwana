@@ -54,11 +54,12 @@ if (is_post() && !$connectionError) {
             seed_database($pdo, $data);
 
             Database::reset();
+            Migrator::run();
             $verifiedAdministrator = Database::fetch(
                 "SELECT id FROM users WHERE LOWER(email) = LOWER(?) AND role = 'admin' AND status = 'active' LIMIT 1",
                 [$data['email']]
             );
-            if (!Database::tableExists('users') || !Database::tableExists('site_settings') || !$verifiedAdministrator) {
+            if (!Database::tableExists('users') || !Database::tableExists('site_settings') || !Database::tableExists('public_pages') || !$verifiedAdministrator) {
                 throw new RuntimeException('Installation data could not be verified.');
             }
 
