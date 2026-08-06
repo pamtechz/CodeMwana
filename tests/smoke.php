@@ -12,9 +12,9 @@ $required = [
     'app/LanguageCatalog.php', 'app/CodeRunner.php', 'api/save-project.php', 'api/run-code.php',
     'api/log-browser-run.php', 'assets/css/app.css', 'assets/css/app-v3.css', 'assets/css/app-v4.css',
     'assets/css/curriculum.css', 'assets/css/remote-runner.css', 'assets/js/app.js',
-    'assets/js/ui-v4.js', 'assets/js/remote-runner.js', 'assets/js/playground.js',
-    'assets/js/curriculum.js', 'database/schema_mysql.sql', 'database/schema_sqlite.sql',
-    'database/seed.php', 'README.md'
+    'assets/js/ui-v4.js', 'assets/js/managed-frame-compat.js', 'assets/js/remote-runner.js',
+    'assets/js/playground.js', 'assets/js/curriculum.js', 'database/schema_mysql.sql',
+    'database/schema_sqlite.sql', 'database/seed.php', 'README.md'
 ];
 
 $failures = [];
@@ -35,7 +35,7 @@ foreach ($phpFiles as $file) {
     if ($code !== 0) $failures[] = implode("\n", $output);
 }
 
-foreach (['assets/js/app.js', 'assets/js/ui-v4.js', 'assets/js/remote-runner.js', 'assets/js/playground.js', 'assets/js/curriculum.js', 'service-worker.js'] as $script) {
+foreach (['assets/js/app.js', 'assets/js/ui-v4.js', 'assets/js/managed-frame-compat.js', 'assets/js/remote-runner.js', 'assets/js/playground.js', 'assets/js/curriculum.js', 'service-worker.js'] as $script) {
     $path = $root . DIRECTORY_SEPARATOR . $script;
     if (is_file($path) && trim((string) shell_exec('command -v node 2>/dev/null')) !== '') {
         $output = [];
@@ -123,15 +123,20 @@ foreach (['data-document-editor', 'data-editor-surface', 'content_html', 'Curric
 }
 
 $playground = (string) file_get_contents($root . '/playground.php');
-foreach (['data-language-select', 'data-file-tree', 'data-stdin', 'data-preview-frame', 'api/run-code.php', 'remote-runner.js', 'data-external-runner-frame', "'browserRunners' => []", "'remoteRunners' => ['python', 'php', 'c', 'cpp', 'go']", 'sandbox="allow-scripts allow-forms allow-modals"'] as $feature) {
+foreach (['data-language-select', 'data-file-tree', 'data-stdin', 'data-preview-frame', 'api/run-code.php', 'remote-runner.js', 'data-external-runner-frame', "'browserRunners' => []", "'remoteRunners' => ['python', 'php', 'c', 'cpp', 'go']"] as $feature) {
     if (!str_contains($playground, $feature)) $failures[] = "Code Lab is missing feature declaration: {$feature}";
 }
 foreach (['browser-runners.js', 'allow-scripts allow-same-origin', '@antonz/codapi', 'engine="wasi"'] as $retiredFeature) {
     if (str_contains($playground, $retiredFeature)) $failures[] = "Code Lab still contains retired or unsafe declaration: {$retiredFeature}";
 }
 
+$frameCompat = (string) file_get_contents($root . '/assets/js/managed-frame-compat.js');
+foreach (["removeAttribute('sandbox')", "setAttribute('allow', 'clipboard-read; clipboard-write; fullscreen')", 'data-external-runner-frame'] as $feature) {
+    if (!str_contains($frameCompat, $feature)) $failures[] = "Managed-frame compatibility module is missing: {$feature}";
+}
+
 $remoteRunner = (string) file_get_contents($root . '/assets/js/remote-runner.js');
-foreach (["new Set(['python', 'php', 'c', 'cpp', 'go'])", 'populateCode', 'triggerRun', 'payload.fallback', 'data-managed-editor', 'codeChangeEvent', "event.origin !== 'null'", 'scheduleSync'] as $feature) {
+foreach (["new Set(['python', 'php', 'c', 'cpp', 'go'])", 'populateCode', 'triggerRun', 'payload.fallback', 'data-managed-editor', 'codeChangeEvent', 'event.origin !== managedOrigin', 'executionInput', "return value === '' ? '\\n' : value", 'extractInput', 'scheduleSync'] as $feature) {
     if (!str_contains($remoteRunner, $feature)) $failures[] = "Managed runner module is missing feature: {$feature}";
 }
 if (str_contains($remoteRunner, "setAttribute('engine', 'wasi')") || str_contains($remoteRunner, 'codapi-snippet')) {
@@ -144,8 +149,8 @@ foreach (['RunnerFallbackException', 'MANAGED_LANGUAGES', "['python', 'php', 'go
 }
 
 $runApi = (string) file_get_contents($root . '/api/run-code.php');
-foreach (['RunnerFallbackException', 'CodeRunner::isManagedLanguage', "'fallback' => CodeRunner::fallbackAvailable()", 'code_runner_fallback'] as $feature) {
-    if (!str_contains($runApi, $feature)) $failures[] = "Run API is missing managed fallback declaration: {$feature}";
+foreach (['RunnerFallbackException', 'CodeRunner::isManagedLanguage', '$stdin === \'\'', '$stdin = "\\n"', "'fallback' => CodeRunner::fallbackAvailable()", 'code_runner_fallback'] as $feature) {
+    if (!str_contains($runApi, $feature)) $failures[] = "Run API is missing managed fallback or input declaration: {$feature}";
 }
 
 $remoteCss = (string) file_get_contents($root . '/assets/css/remote-runner.css');
@@ -154,7 +159,7 @@ foreach (['.external-runner-shell', 'data-managed-editor', '.studio-editor > .ex
 }
 
 $serviceWorker = (string) file_get_contents($root . '/service-worker.js');
-foreach (['codemwana-static-v8', 'assets/js/remote-runner.js', 'assets/css/remote-runner.css'] as $feature) {
+foreach (['codemwana-static-v9', 'assets/js/managed-frame-compat.js', 'assets/js/remote-runner.js', 'assets/css/remote-runner.css'] as $feature) {
     if (!str_contains($serviceWorker, $feature)) $failures[] = "Service worker is missing managed runner cache declaration: {$feature}";
 }
 if (str_contains($serviceWorker, 'assets/js/browser-runners.js')) $failures[] = 'Service worker still caches the retired browser runner.';
@@ -165,8 +170,8 @@ foreach (['CODE_RUNNER_PROVIDER=jdoodle', 'JDOODLE_CLIENT_ID=', 'JDOODLE_CLIENT_
 }
 
 $footerSource = (string) file_get_contents($root . '/partials/footer.php');
-foreach (['$pageScripts', 'array_unique', 'asset(\'js/\' . $script)'] as $feature) {
-    if (!str_contains($footerSource, $feature)) $failures[] = "Shared footer is missing multi-script support: {$feature}";
+foreach (['$pageScripts', 'array_unique', 'managed-frame-compat.js', "in_array('remote-runner.js', $pageScripts, true)", 'asset(\'js/\' . $script)'] as $feature) {
+    if (!str_contains($footerSource, $feature)) $failures[] = "Shared footer is missing managed script ordering: {$feature}";
 }
 
 if ($failures) {
@@ -174,4 +179,4 @@ if ($failures) {
     exit(1);
 }
 
-echo 'Smoke checks passed for ' . count($phpFiles) . " PHP files, ten languages, five managed editor runtimes, secure sandboxing, JDoodle execution, automatic embedded fallback, responsive curriculum pages and intelligent installation state.\n";
+echo 'Smoke checks passed for ' . count($phpFiles) . " PHP files, ten languages, five managed editor runtimes, JDoodle input handling, OneCompiler origin compatibility, automatic embedded fallback, responsive curriculum pages and intelligent installation state.\n";
