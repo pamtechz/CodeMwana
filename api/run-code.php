@@ -23,6 +23,11 @@ if ($projectId > 0 && !Learning::project($projectId, (int) current_user()['id'])
     json_response(['ok' => false, 'message' => 'The selected project does not belong to this account.'], 403);
 }
 
+// An empty HTTP field represents no stream bytes. Supplying one blank line
+// gives input(), fgets(), getline() and similar beginner-friendly readers a
+// valid empty value instead of an immediate EOF condition.
+if (CodeRunner::isManagedLanguage($languageSlug) && $stdin === '') $stdin = "\n";
+
 $normalised = LanguageCatalog::normalizeWorkspace($files, $language);
 $totalCharacters = array_sum(array_map(static fn (string $content): int => mb_strlen($content), $normalised));
 if ($totalCharacters > 180000) json_response(['ok' => false, 'message' => 'The workspace is too large to run.'], 422);
