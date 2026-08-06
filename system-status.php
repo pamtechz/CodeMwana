@@ -10,7 +10,8 @@ $checks = [
     ['Setup file', $state['setup_exists'] ? 'Present' : 'Removed', $state['installed'] || $state['setup_exists']],
     ['Schema version', $state['schema_version'] ?: 'Not detected', $state['installed']],
     ['Browser runtimes', 'Python and PHP available without an API key', true],
-    ['External compiler', CodeRunner::configured() ? 'Configured for C, C++ and Go' : 'Optional—C, C++ and Go cannot run', true],
+    ['Primary compiler API', CodeRunner::configured() ? 'Credentials configured' : 'Credentials missing—backup will be used', true],
+    ['Backup execution workspace', CodeRunner::fallbackAvailable() ? 'Available' : 'Not configured', CodeRunner::fallbackAvailable()],
 ];
 $pageTitle = 'System status';
 $bodyClass = 'system-status-page';
