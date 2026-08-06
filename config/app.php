@@ -13,9 +13,6 @@ return [
     'login_limit' => 5,
     'login_window_minutes' => 15,
     'code_runner' => [
-        'provider' => strtolower(trim((string) env('CODE_RUNNER_PROVIDER', 'jdoodle'))),
-        'url' => env('CODE_RUNNER_URL', ''),
-        'token' => env('CODE_RUNNER_TOKEN', ''),
         'timeout_seconds' => (int) env('CODE_RUNNER_TIMEOUT', 20),
         'jdoodle' => [
             'execute_url' => env('JDOODLE_API_URL', 'https://api.jdoodle.com/v1/execute'),
@@ -31,7 +28,6 @@ return [
             ],
         ],
         'fallback' => [
-            'provider' => 'onecompiler',
             'embed_url' => env('ONECOMPILER_EMBED_URL', 'https://onecompiler.com/embed'),
         ],
     ],
