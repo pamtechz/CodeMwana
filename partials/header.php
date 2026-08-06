@@ -87,6 +87,7 @@ $isRootDashboard = basename($currentPath) === 'dashboard.php' && !str_contains($
             <a href="<?= e(url('index.php#learning')) ?>">Learning paths</a>
             <a href="<?= e(url('index.php#experience')) ?>">Experience</a>
             <a href="<?= e(url('about.php')) ?>">About</a>
+            <a href="<?= e(url('help.php')) ?>">Help</a>
             <a class="button button-secondary button-small" href="<?= e(url('login.php')) ?>">Sign in</a>
             <?php if ((string) setting('registration_open', '1') === '1'): ?><a class="button button-small" href="<?= e(url('register.php')) ?>">Create account</a><?php endif; ?>
         </nav>
