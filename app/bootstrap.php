@@ -12,6 +12,18 @@ $GLOBALS['config'] = [
 
 date_default_timezone_set((string) config('app.timezone', 'Africa/Lusaka'));
 
+// Apache and shared-hosting configurations can combine duplicate CSP headers.
+// CodeMwana therefore owns the policy at the PHP response layer. Normal pages
+// stay same-origin; Code Lab deliberately omits CSP because learner programs
+// execute only inside its sandboxed preview frame and browser WASI runtime.
+if (PHP_SAPI !== 'cli' && !headers_sent()) {
+    header_remove('Content-Security-Policy');
+    $scriptName = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+    if ($scriptName !== 'playground.php') {
+        header("Content-Security-Policy: default-src 'self'; script-src 'self'; script-src-elem 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; worker-src 'self'; frame-src 'self'; frame-ancestors 'self'; form-action 'self'; base-uri 'self'; object-src 'none'");
+    }
+}
+
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_name((string) config('app.session_name', 'codemwana_session'));
     session_set_cookie_params([
