@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 final class Migrator
 {
-    public const VERSION = '3.0.0';
+    public const VERSION = '3.5.0';
 
     public static function run(): void
     {
@@ -102,12 +102,46 @@ final class Migrator
         self::addColumn('project_versions', 'stdin', 'TEXT NULL');
 
         self::seedLanguages();
-        if (Database::tableExists('home_features')) {
-            Database::query("UPDATE home_features SET title = ?, description = ? WHERE title = ?", ['Multi-language Code Lab', 'Ten mainstream language workspaces combine sandboxed browser previews with an optional isolated compiler runner.', 'Safe code execution']);
-            Database::query("UPDATE home_features SET title = ?, description = ? WHERE title = ?", ['Multi-file project workspace', 'Learners create real project files, provide standard input, run code and retain database-backed version history.', 'Creative coding canvas']);
-        }
+        self::refreshPublicContent();
         Database::query('UPDATE schema_meta SET schema_version = ?, updated_at = CURRENT_TIMESTAMP', [self::VERSION]);
         Installation::markInstalled(self::VERSION);
+    }
+
+    private static function refreshPublicContent(): void
+    {
+        if (Database::tableExists('site_settings')) {
+            Database::query(
+                'UPDATE site_settings SET setting_value = ? WHERE setting_key = ? AND setting_value = ?',
+                [
+                    'A guided programming learning platform designed for children, schools and young creators.',
+                    'site_description',
+                    'A safe, database-backed programming learning platform designed for children and schools.',
+                ]
+            );
+        }
+
+        if (!Database::tableExists('home_features')) return;
+
+        $features = [
+            'Multi-language Code Lab' => 'Use multiple coding workspaces for guided practice, web creation and programming projects.',
+            'Multi-file project workspace' => 'Create projects with one or more files, provide program input, run code and continue saved work later.',
+            'Progress that persists' => 'Lessons, quiz results, achievements and saved projects remain connected to each learner account.',
+            'Teacher insight' => 'Teachers can review participation, lesson progress and assessment performance to provide timely support.',
+            'Low-bandwidth design' => 'Responsive pages support learning on phones, tablets and computers across different connection conditions.',
+        ];
+
+        foreach ($features as $title => $description) {
+            Database::query('UPDATE home_features SET description = ? WHERE title = ?', [$description, $title]);
+        }
+
+        Database::query(
+            'UPDATE home_features SET title = ?, description = ? WHERE title = ?',
+            ['Multi-language Code Lab', $features['Multi-language Code Lab'], 'Safe code execution']
+        );
+        Database::query(
+            'UPDATE home_features SET title = ?, description = ? WHERE title = ?',
+            ['Multi-file project workspace', $features['Multi-file project workspace'], 'Creative coding canvas']
+        );
     }
 
     private static function ensureSchemaMeta(): void
