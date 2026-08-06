@@ -18,6 +18,19 @@ final class RunnerFallbackException extends RuntimeException
 final class CodeRunner
 {
     private const MANAGED_LANGUAGES = ['python', 'php', 'go', 'c', 'cpp'];
+    private const PYTHON_INPUT_GUARD = <<<'PYTHON'
+# CodeMwana input compatibility guard.
+import builtins as __codemwana_builtins
+__codemwana_original_input = __codemwana_builtins.input
+
+def __codemwana_safe_input(prompt=''):
+    try:
+        return __codemwana_original_input(prompt)
+    except EOFError:
+        return ''
+
+__codemwana_builtins.input = __codemwana_safe_input
+PYTHON;
 
     public static function provider(): string
     {
@@ -77,6 +90,7 @@ final class CodeRunner
         }
 
         [$runtime, $versionIndex] = self::jdoodleRuntime($language);
+        $slug = strtolower(trim((string) ($language['slug'] ?? $language['runner_language'] ?? '')));
         $normalisedFiles = [];
         foreach ($files as $name => $content) {
             $cleanName = basename((string) $name);
@@ -86,6 +100,7 @@ final class CodeRunner
 
         $mainFile = basename((string) ($language['main_file'] ?? array_key_first($normalisedFiles)));
         if (!array_key_exists($mainFile, $normalisedFiles)) $mainFile = (string) array_key_first($normalisedFiles);
+        $normalisedFiles = self::prepareSourceFiles($slug, $normalisedFiles, $mainFile);
 
         $payload = [
             'clientId' => $clientId,
@@ -120,13 +135,13 @@ final class CodeRunner
         try {
             [$httpStatus, $body] = self::post($endpoint, $json, ['Content-Type: application/json', 'Accept: application/json']);
         } catch (Throwable $exception) {
-            error_log('CodeMwana JDoodle connection failure: ' . $exception->getMessage());
+            error_log('CodeMwana managed runner connection failure: ' . $exception->getMessage());
             throw new RunnerFallbackException('network');
         }
 
         $decoded = json_decode($body, true);
         if (!is_array($decoded)) {
-            error_log('CodeMwana JDoodle invalid response: HTTP ' . $httpStatus);
+            error_log('CodeMwana managed runner returned an invalid response. HTTP ' . $httpStatus);
             throw new RunnerFallbackException('invalid_response');
         }
 
@@ -141,7 +156,7 @@ final class CodeRunner
             throw new RunnerFallbackException('quota');
         }
         if (in_array($httpStatus, [401, 403], true) || in_array($apiStatus, [401, 403], true)) {
-            error_log('CodeMwana JDoodle authentication rejected.');
+            error_log('CodeMwana managed runner authentication was rejected.');
             throw new RunnerFallbackException('authentication');
         }
         if ($httpStatus >= 500 || $apiStatus >= 500) {
@@ -151,8 +166,8 @@ final class CodeRunner
             throw new RunnerFallbackException('request_rejected');
         }
 
-        $output = (string) ($decoded['output'] ?? '');
-        $explicitError = trim((string) ($decoded['error'] ?? ''));
+        $output = self::sanitiseProgramOutput((string) ($decoded['output'] ?? ''), $mainFile);
+        $explicitError = self::sanitiseProgramOutput(trim((string) ($decoded['error'] ?? '')), $mainFile);
         $success = array_key_exists('isExecutionSuccess', $decoded)
             ? (bool) $decoded['isExecutionSuccess']
             : ($apiStatus === 200 && $explicitError === '');
@@ -172,10 +187,28 @@ final class CodeRunner
             'exit_code' => $success ? 0 : 1,
             'execution_time_ms' => $cpuSeconds !== null ? (int) round($cpuSeconds * 1000) : null,
             'memory_bytes' => $memoryKilobytes !== null ? $memoryKilobytes * 1024 : null,
-            'runtime' => (string) ($language['slug'] ?? $language['runner_language'] ?? $runtime),
+            'runtime' => $slug,
             'version' => (string) $versionIndex,
-            '_provider' => 'jdoodle',
+            '_provider' => 'managed',
         ];
+    }
+
+    private static function prepareSourceFiles(string $slug, array $files, string $mainFile): array
+    {
+        if ($slug !== 'python' || !isset($files[$mainFile])) return $files;
+        if (str_contains($files[$mainFile], '__codemwana_safe_input')) return $files;
+
+        $files[$mainFile] = self::PYTHON_INPUT_GUARD . "\n\n" . $files[$mainFile];
+        return $files;
+    }
+
+    private static function sanitiseProgramOutput(string $text, string $mainFile): string
+    {
+        if ($text === '') return '';
+        $text = str_ireplace(['JDoodle', 'Piston', 'OneCompiler'], 'execution service', $text);
+        $text = preg_replace('#/home/(?:[^\s/:]+/)*[^\s:]+#', $mainFile, $text) ?? $text;
+        $text = preg_replace('#(?:[A-Za-z]:\\\\|/)(?:[^\s:]+[/\\\\])+([^/\\\\\s:]+)#', '$1', $text) ?? $text;
+        return $text;
     }
 
     private static function jdoodleRuntime(array $language): array
@@ -229,7 +262,7 @@ final class CodeRunner
 
         try {
             [$status, $body] = self::post($endpoint, $json, $headers);
-        } catch (Throwable $exception) {
+        } catch (Throwable) {
             throw new RunnerFallbackException('network');
         }
         $decoded = json_decode($body, true);
@@ -237,11 +270,11 @@ final class CodeRunner
 
         $compile = is_array($decoded['compile'] ?? null) ? $decoded['compile'] : [];
         $run = is_array($decoded['run'] ?? null) ? $decoded['run'] : [];
-        $stdout = (string) ($run['stdout'] ?? $run['output'] ?? '');
-        $stderr = trim((string) ($compile['stderr'] ?? ''));
+        $stdout = self::sanitiseProgramOutput((string) ($run['stdout'] ?? $run['output'] ?? ''), basename((string) ($language['main_file'] ?? 'main')));
+        $stderr = self::sanitiseProgramOutput(trim((string) ($compile['stderr'] ?? '')), basename((string) ($language['main_file'] ?? 'main')));
         if ($stderr !== '' && trim((string) ($run['stderr'] ?? '')) !== '') $stderr .= "\n";
-        $stderr .= (string) ($run['stderr'] ?? '');
-        $message = trim(implode("\n", array_filter([(string) ($compile['message'] ?? ''), (string) ($run['message'] ?? '')])));
+        $stderr .= self::sanitiseProgramOutput((string) ($run['stderr'] ?? ''), basename((string) ($language['main_file'] ?? 'main')));
+        $message = self::sanitiseProgramOutput(trim(implode("\n", array_filter([(string) ($compile['message'] ?? ''), (string) ($run['message'] ?? '')]))), basename((string) ($language['main_file'] ?? 'main')));
         if ($message !== '') $stderr = trim($stderr . "\n" . $message);
 
         return [
@@ -251,9 +284,9 @@ final class CodeRunner
             'exit_code' => isset($run['code']) ? (int) $run['code'] : null,
             'execution_time_ms' => isset($run['wall_time']) ? (int) $run['wall_time'] : null,
             'memory_bytes' => isset($run['memory']) ? (int) $run['memory'] : null,
-            'runtime' => (string) ($decoded['language'] ?? $runnerLanguage),
+            'runtime' => strtolower((string) ($language['slug'] ?? $runnerLanguage)),
             'version' => (string) ($decoded['version'] ?? $language['runner_version'] ?? '*'),
-            '_provider' => 'piston',
+            '_provider' => 'managed',
         ];
     }
 
