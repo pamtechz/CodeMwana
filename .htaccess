@@ -1,6 +1,10 @@
 Options -Indexes
 DirectoryIndex index.php
 
+<IfModule mod_setenvif.c>
+  SetEnvIf Request_URI "(^|/)playground\.php$" CODEMWANA_CODELAB=1
+</IfModule>
+
 <IfModule mod_headers.c>
   Header always set X-Content-Type-Options "nosniff"
   Header always set X-Frame-Options "SAMEORIGIN"
@@ -10,11 +14,9 @@ DirectoryIndex index.php
   # Keep the application-wide policy strict. Code Lab receives a separate,
   # narrowly scoped policy because its sandboxed previews and WASI runtimes
   # intentionally execute learner code in an iframe/browser worker.
-  SetEnvIf Request_URI "(^|/)playground\.php$" CODEMWANA_CODELAB=1
-
   Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; script-src-elem 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; worker-src 'self'; frame-src 'self'; frame-ancestors 'self'; form-action 'self'; base-uri 'self'; object-src 'none'" env=!CODEMWANA_CODELAB
 
-  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://unpkg.com; script-src-elem 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data: https://unpkg.com; connect-src 'self' https://unpkg.com; worker-src 'self' blob:; child-src 'self' blob:; frame-src 'self' blob: data:; frame-ancestors 'self'; form-action 'self'; base-uri 'self'; object-src 'none'" env=CODEMWANA_CODELAB
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://unpkg.com; script-src-elem 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data: https://unpkg.com; connect-src 'self' https://unpkg.com; worker-src 'self' blob:; child-src 'self' blob:; frame-src 'self' blob: data:; frame-ancestors 'self'; form-action 'self'; base-uri 'self'; object-src 'none'" env=CODEMWANA_CODELAB
 </IfModule>
 
 <FilesMatch "^\.env">
