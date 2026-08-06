@@ -14,17 +14,21 @@
   const output = lab.querySelector('[data-console-output]');
   const outputEmpty = lab.querySelector('[data-output-empty]');
   const runButton = lab.querySelector('[data-run-code]');
+  const saveButton = lab.querySelector('[data-save-project]');
   const executionLabel = lab.querySelector('[data-execution-label]');
   const runnerState = lab.querySelector('[data-runner-state]');
-  const previewSurface = lab.querySelector('[data-output-view="preview"]');
-  const localPreview = lab.querySelector('[data-preview-frame]');
-  const previewMessage = lab.querySelector('[data-preview-message]');
-  const fallbackShell = lab.querySelector('[data-external-runner]');
-  const fallbackFrame = lab.querySelector('[data-external-runner-frame]');
+  const mobileGrid = lab.querySelector('.studio-grid');
+  const editorPanel = lab.querySelector('.studio-editor');
+  const managedShell = lab.querySelector('[data-external-runner]');
+  const managedFrame = lab.querySelector('[data-external-runner-frame]');
   const fallbackBaseUrl = String(lab.dataset.fallbackUrl || '').replace(/\/$/, '');
-  const fallbackOrigin = 'https://onecompiler.com';
+  const managedOrigin = 'https://onecompiler.com';
+
+  let projectId = Number(initial.projectId || 0);
+  let managedLanguage = '';
+  let managedFiles = {};
+  let frameSequence = 0;
   let running = false;
-  let fallbackLoadSequence = 0;
 
   const embedLanguages = {
     c: 'c',
@@ -32,31 +36,193 @@
     go: 'go',
   };
 
+  if (editorPanel && managedShell && managedShell.parentElement !== editorPanel) {
+    editorPanel.appendChild(managedShell);
+  }
+
   function activeLanguage() {
     return String(languageSelect?.value || '').toLowerCase();
   }
 
-  function languageDefinition() {
-    return languageMap.get(activeLanguage()) || null;
+  function languageDefinition(slug = activeLanguage()) {
+    return languageMap.get(slug) || null;
+  }
+
+  function normaliseFiles(source) {
+    const result = {};
+    Object.entries(source || {}).slice(0, 12).forEach(([name, content]) => {
+      if (typeof name !== 'string' || typeof content !== 'string') return;
+      const clean = name.trim().replace(/\\/g, '/').replace(/^\/+/, '');
+      if (!clean || clean.includes('..')) return;
+      result[clean] = content;
+    });
+    return result;
+  }
+
+  function starterFiles(slug) {
+    const language = languageDefinition(slug);
+    if (slug === initial.language) return normaliseFiles(initial.files || {});
+    return normaliseFiles(language?.files || {});
   }
 
   function currentProjectId() {
     const queryId = Number(new URLSearchParams(window.location.search).get('project') || 0);
-    return queryId > 0 ? queryId : Number(initial.projectId || 0);
+    return queryId > 0 ? queryId : projectId;
+  }
+
+  function mainFileName(files = managedFiles) {
+    const language = languageDefinition(managedLanguage || activeLanguage());
+    const preferred = String(language?.mainFile || '');
+    if (preferred && Object.prototype.hasOwnProperty.call(files, preferred)) return preferred;
+    return Object.keys(files)[0] || preferred || `main.${activeLanguage()}`;
+  }
+
+  function embedUrl(language) {
+    if (!fallbackBaseUrl || !embedLanguages[language]) return '';
+    const params = new URLSearchParams({
+      hideLanguageSelection: 'true',
+      hideNew: 'true',
+      hideRun: 'true',
+      hideNewFileOption: 'true',
+      hideTitle: 'true',
+      hideEditorOptions: 'true',
+      listenToEvents: 'true',
+      codeChangeEvent: 'true',
+      theme: 'dark',
+      fontSize: '15',
+    });
+    return `${fallbackBaseUrl}/${embedLanguages[language]}?${params.toString()}`;
+  }
+
+  function setMobileEditorView() {
+    if (!mobileGrid || window.innerWidth > 900) return;
+    mobileGrid.dataset.mobileActive = 'editor';
+    lab.querySelectorAll('[data-mobile-view]').forEach((button) => {
+      button.classList.toggle('active', button.dataset.mobileView === 'editor');
+    });
+  }
+
+  function populateManagedEditor(files = managedFiles, triggerRun = false) {
+    if (!managedFrame?.contentWindow || !supported.has(activeLanguage())) return;
+    const language = activeLanguage();
+    const payload = Object.entries(files).map(([name, content]) => ({
+      name: String(name),
+      content: String(content),
+    }));
+
+    managedFrame.contentWindow.postMessage({
+      eventType: 'populateCode',
+      language: embedLanguages[language],
+      files: payload,
+    }, managedOrigin);
+
+    if (triggerRun) {
+      window.setTimeout(() => {
+        managedFrame.contentWindow?.postMessage({ eventType: 'triggerRun' }, managedOrigin);
+      }, 180);
+    }
+  }
+
+  function schedulePopulate(sequence, triggerRun = false) {
+    [0, 400, 1100].forEach((delay, index) => {
+      window.setTimeout(() => {
+        if (sequence !== frameSequence || activeLanguage() !== managedLanguage) return;
+        populateManagedEditor(managedFiles, triggerRun && index === 2);
+      }, delay);
+    });
+  }
+
+  function activateManagedEditor() {
+    const language = activeLanguage();
+    if (!supported.has(language)) {
+      delete lab.dataset.managedEditor;
+      if (managedShell) managedShell.hidden = true;
+      return;
+    }
+
+    lab.dataset.managedEditor = 'true';
+    setMobileEditorView();
+    if (executionLabel) executionLabel.textContent = 'Managed online workspace';
+    if (runnerState) {
+      runnerState.textContent = 'Online execution ready';
+      runnerState.classList.add('ready');
+    }
+
+    if (!managedShell || !managedFrame) return;
+    managedShell.hidden = false;
+
+    if (managedLanguage !== language) {
+      managedLanguage = language;
+      managedFiles = starterFiles(language);
+      const localMain = mainFileName(managedFiles);
+      if (editor?.value && localMain) managedFiles[localMain] = editor.value;
+    }
+
+    const url = embedUrl(language);
+    if (!url) {
+      managedShell.hidden = true;
+      delete lab.dataset.managedEditor;
+      return;
+    }
+
+    const currentUrl = managedFrame.getAttribute('src') || '';
+    if (!currentUrl.includes(`/embed/${embedLanguages[language]}`)) {
+      const sequence = ++frameSequence;
+      managedFrame.onload = () => schedulePopulate(sequence, false);
+      managedFrame.src = url;
+    } else {
+      schedulePopulate(frameSequence, false);
+    }
+  }
+
+  function extractFiles(data) {
+    const candidate = data?.files ?? data?.code?.files ?? data?.code;
+    if (Array.isArray(candidate)) {
+      const result = {};
+      candidate.forEach((file) => {
+        const name = String(file?.name || '').trim();
+        const content = file?.content;
+        if (name && typeof content === 'string') result[name] = content;
+      });
+      return normaliseFiles(result);
+    }
+    if (candidate && typeof candidate === 'object') {
+      return normaliseFiles(candidate);
+    }
+    return {};
+  }
+
+  function openLocalFile(name) {
+    const buttons = Array.from(lab.querySelectorAll('[data-open-file]'));
+    const button = buttons.find((item) => item.dataset.openFile === name);
+    if (button) button.click();
+  }
+
+  function syncManagedToCodeMwana() {
+    if (!supported.has(activeLanguage()) || !editor) return;
+    const files = normaliseFiles(managedFiles);
+    const names = Object.keys(files);
+    if (!names.length) return;
+
+    names.forEach((name) => {
+      openLocalFile(name);
+      editor.value = files[name];
+      editor.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    const main = mainFileName(files);
+    openLocalFile(main);
+    editor.value = files[main] || '';
+    editor.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
   function workspace() {
-    const language = languageDefinition();
-    const source = initial.language === activeLanguage()
-      ? { ...(initial.files || {}) }
-      : { ...(language?.files || {}) };
-    const mainFile = language?.mainFile || Object.keys(source)[0] || `main.${activeLanguage()}`;
-    source[mainFile] = editor?.value || '';
-    return source;
+    if (!Object.keys(managedFiles).length) managedFiles = starterFiles(activeLanguage());
+    return normaliseFiles(managedFiles);
   }
 
-  function selectOutput(name) {
-    const tab = lab.querySelector(`[data-output-tab="${name}"]`);
+  function selectConsole() {
+    const tab = lab.querySelector('[data-output-tab="console"]');
     if (tab && !tab.classList.contains('active')) tab.click();
     if (window.innerWidth <= 900) {
       const mobile = lab.querySelector('[data-mobile-view="output"]');
@@ -65,7 +231,7 @@
   }
 
   function clearConsole() {
-    selectOutput('console');
+    selectConsole();
     output.textContent = '';
     output.classList.remove('has-error');
     outputEmpty.hidden = true;
@@ -77,70 +243,7 @@
     if (error) output.classList.add('has-error');
   }
 
-  function hideFallback() {
-    fallbackLoadSequence += 1;
-    previewSurface?.classList.remove('has-external-runner');
-    if (fallbackShell) fallbackShell.hidden = true;
-    if (fallbackFrame) fallbackFrame.removeAttribute('src');
-    if (localPreview) localPreview.hidden = false;
-  }
-
-  function fallbackUrl(language) {
-    if (!fallbackBaseUrl || !embedLanguages[language]) return '';
-    const params = new URLSearchParams({
-      hideLanguageSelection: 'true',
-      hideNew: 'true',
-      hideNewFileOption: 'true',
-      hideTitle: 'true',
-      hideEditorOptions: 'true',
-      listenToEvents: 'true',
-      theme: 'dark',
-      fontSize: '15',
-    });
-    return `${fallbackBaseUrl}/${embedLanguages[language]}?${params.toString()}`;
-  }
-
-  function sendFallbackCode(sequence, files) {
-    if (!fallbackFrame?.contentWindow || sequence !== fallbackLoadSequence) return;
-    const language = activeLanguage();
-    const filePayload = Object.entries(files).map(([name, content]) => ({
-      name: String(name),
-      content: String(content),
-    }));
-    fallbackFrame.contentWindow.postMessage({
-      eventType: 'populateCode',
-      language: embedLanguages[language],
-      files: filePayload,
-    }, fallbackOrigin);
-    fallbackFrame.contentWindow.postMessage({ eventType: 'triggerRun' }, fallbackOrigin);
-  }
-
-  function openFallback(files) {
-    const language = activeLanguage();
-    const url = fallbackUrl(language);
-    if (!url || !fallbackFrame || !fallbackShell) {
-      clearConsole();
-      write('The execution environment is temporarily unavailable. Try again later.', true);
-      return;
-    }
-
-    const sequence = ++fallbackLoadSequence;
-    previewSurface?.classList.add('has-external-runner');
-    fallbackShell.hidden = false;
-    if (localPreview) localPreview.hidden = true;
-    if (previewMessage) previewMessage.hidden = true;
-    selectOutput('preview');
-
-    fallbackFrame.onload = () => {
-      sendFallbackCode(sequence, files);
-      window.setTimeout(() => sendFallbackCode(sequence, files), 500);
-      window.setTimeout(() => sendFallbackCode(sequence, files), 1400);
-    };
-    fallbackFrame.src = url;
-  }
-
   function renderResult(result, startedAt) {
-    hideFallback();
     clearConsole();
     if (result?.stdout) write(String(result.stdout).trimEnd());
     if (result?.stderr) write(String(result.stderr).trimEnd(), true);
@@ -152,6 +255,12 @@
     write(`\nProcess finished${exitText} · ${elapsed} ms`);
   }
 
+  function runInManagedWorkspace(files) {
+    setMobileEditorView();
+    populateManagedEditor(files, false);
+    window.setTimeout(() => populateManagedEditor(files, true), 420);
+  }
+
   async function runRemoteProgram() {
     const language = activeLanguage();
     if (!supported.has(language) || running) return;
@@ -159,7 +268,7 @@
     running = true;
     runButton.disabled = true;
     runButton.classList.add('busy');
-    hideFallback();
+    syncManagedToCodeMwana();
     clearConsole();
     write(`Running ${languageDefinition()?.name || language}…`);
     const files = workspace();
@@ -185,7 +294,9 @@
       }));
 
       if (payload.fallback) {
-        openFallback(files);
+        output.textContent = '';
+        outputEmpty.hidden = false;
+        runInManagedWorkspace(files);
         return;
       }
       if (!response.ok || !payload.ok) {
@@ -202,33 +313,50 @@
     }
   }
 
-  function updateStatus() {
-    const language = activeLanguage();
-    if (supported.has(language)) {
-      if (executionLabel) executionLabel.textContent = 'Managed online execution';
-      if (runnerState) {
-        runnerState.textContent = 'Online execution ready';
-        runnerState.classList.add('ready');
-      }
-    }
-    hideFallback();
-  }
+  window.addEventListener('message', (event) => {
+    if (event.origin !== managedOrigin || event.source !== managedFrame?.contentWindow) return;
+    const files = extractFiles(event.data || {});
+    if (!Object.keys(files).length) return;
+    managedFiles = files;
+    syncManagedToCodeMwana();
+  });
 
   document.addEventListener('click', (event) => {
-    const target = event.target instanceof Element ? event.target.closest('[data-run-code]') : null;
-    if (!target || !supported.has(activeLanguage())) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    runRemoteProgram();
+    const runTarget = event.target instanceof Element ? event.target.closest('[data-run-code]') : null;
+    if (runTarget && supported.has(activeLanguage())) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      runRemoteProgram();
+      return;
+    }
+
+    const saveTarget = event.target instanceof Element ? event.target.closest('[data-save-project]') : null;
+    if (saveTarget && supported.has(activeLanguage())) {
+      syncManagedToCodeMwana();
+    }
   }, true);
 
   document.addEventListener('keydown', (event) => {
-    if (!(event.ctrlKey || event.metaKey) || event.key !== 'Enter' || !supported.has(activeLanguage())) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    runRemoteProgram();
+    if (!supported.has(activeLanguage()) || !(event.ctrlKey || event.metaKey)) return;
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      runRemoteProgram();
+    }
+    if (event.key.toLowerCase() === 's') {
+      syncManagedToCodeMwana();
+    }
   }, true);
 
-  languageSelect?.addEventListener('change', () => window.setTimeout(updateStatus, 0));
-  window.setTimeout(updateStatus, 0);
+  languageSelect?.addEventListener('change', () => {
+    window.setTimeout(activateManagedEditor, 0);
+  });
+
+  if (saveButton) {
+    saveButton.addEventListener('focus', () => {
+      if (supported.has(activeLanguage())) syncManagedToCodeMwana();
+    });
+  }
+
+  window.setTimeout(activateManagedEditor, 0);
 })();
