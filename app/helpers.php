@@ -208,7 +208,7 @@ function icon(string $name, string $class = ''): string
         'trophy' => '<path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v4a5 5 0 0 1-10 0Z"/><path d="M7 6H4v2a4 4 0 0 0 4 4"/><path d="M17 6h3v2a4 4 0 0 1-4 4"/>',
         'user' => '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
         'users' => '<path d="M16 21a7 7 0 0 0-14 0"/><circle cx="9" cy="8" r="4"/><path d="M22 21a6 6 0 0 0-4.5-5.8"/><path d="M16 4.3a4 4 0 0 1 0 7.4"/>',
-        'settings' => '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21h-4v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H3v-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1L7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V3h4v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1H21v4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>',
+        'settings' => '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21h-4v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H3v-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1L7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V3h4v.1a1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1H21v4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>',
         'log-out' => '<path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>',
         'menu' => '<path d="M4 7h16M4 12h16M4 17h16"/>',
         'x' => '<path d="m6 6 12 12M18 6 6 18"/>',
@@ -254,5 +254,41 @@ function sanitize_lesson_html(string $html): string
     $clean = preg_replace('/\s+on[a-z]+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $clean) ?? '';
     $clean = preg_replace('/\s+style\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $clean) ?? '';
     $clean = preg_replace('/\s+href\s*=\s*(["\'])\s*javascript:[^"\']*\1/i', '', $clean) ?? '';
+    return trim($clean);
+}
+
+function sanitize_public_html(string $html): string
+{
+    $allowedTags = ['h2', 'h3', 'h4', 'p', 'ol', 'ul', 'li', 'strong', 'em', 'pre', 'code', 'blockquote', 'a', 'br', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'details', 'summary'];
+    $allowed = '<' . implode('><', $allowedTags) . '>';
+    $clean = strip_tags($html, $allowed);
+
+    $clean = preg_replace_callback(
+        '/<\s*(\/?)\s*([a-z0-9]+)([^>]*)>/i',
+        static function (array $match) use ($allowedTags): string {
+            $closing = $match[1] === '/';
+            $tag = strtolower($match[2]);
+            $attributes = $match[3] ?? '';
+            if (!in_array($tag, $allowedTags, true)) return '';
+            if ($closing) return in_array($tag, ['br', 'hr'], true) ? '' : '</' . $tag . '>';
+            if ($tag === 'br' || $tag === 'hr') return '<' . $tag . '>';
+            if ($tag === 'details') return preg_match('/(?:^|\s)open(?:\s|=|$)/i', $attributes) ? '<details open>' : '<details>';
+            if ($tag !== 'a') return '<' . $tag . '>';
+
+            $href = '';
+            if (preg_match('/\bhref\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s>]+))/i', $attributes, $hrefMatch)) {
+                $href = html_entity_decode((string) ($hrefMatch[1] ?: $hrefMatch[2] ?: $hrefMatch[3] ?: ''), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            }
+            $href = trim($href);
+            $safe = $href !== '' && !preg_match('/[\r\n]/', $href) && (
+                preg_match('#^(?:https?://|mailto:|tel:)#i', $href)
+                || str_starts_with($href, '#')
+                || preg_match('/^[a-z0-9][a-z0-9._\/-]*(?:\?[a-z0-9%&=._-]*)?(?:#[a-z0-9._-]*)?$/i', $href)
+            );
+            return $safe ? '<a href="' . e($href) . '" rel="noopener">' : '<a>';
+        },
+        $clean
+    ) ?? '';
+
     return trim($clean);
 }
