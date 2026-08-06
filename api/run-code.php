@@ -29,18 +29,42 @@ if ($totalCharacters > 180000) json_response(['ok' => false, 'message' => 'The w
 
 try {
     $result = CodeRunner::run($language, $normalised, $stdin);
+    $provider = (string) ($result['_provider'] ?? CodeRunner::provider());
+    unset($result['_provider']);
+
     Learning::logCodeRun((int) current_user()['id'], $projectId ?: null, $languageSlug, $result, $stdin);
-    activity('code_executed', ['language' => $languageSlug, 'status' => $result['status'], 'project_id' => $projectId ?: null]);
+    activity('code_executed', [
+        'language' => $languageSlug,
+        'status' => $result['status'],
+        'project_id' => $projectId ?: null,
+        'provider' => $provider,
+    ]);
     json_response(['ok' => true, 'result' => $result]);
+} catch (RunnerFallbackException $exception) {
+    activity('code_runner_fallback', [
+        'language' => $languageSlug,
+        'project_id' => $projectId ?: null,
+        'provider' => CodeRunner::provider(),
+        'reason' => $exception->reason(),
+    ]);
+
+    json_response([
+        'ok' => false,
+        'fallback' => CodeRunner::fallbackAvailable(),
+        'message' => CodeRunner::fallbackAvailable()
+            ? 'Preparing an alternate execution environment.'
+            : 'The execution environment is temporarily unavailable.',
+    ], CodeRunner::fallbackAvailable() ? 200 : 503);
 } catch (Throwable $exception) {
+    error_log('CodeMwana execution failure: ' . $exception->getMessage());
     $result = [
         'status' => 'failed',
         'stdout' => '',
-        'stderr' => $exception->getMessage(),
+        'stderr' => 'The program could not be executed. Check the code and try again.',
         'exit_code' => null,
         'execution_time_ms' => null,
         'memory_bytes' => null,
     ];
     Learning::logCodeRun((int) current_user()['id'], $projectId ?: null, $languageSlug, $result, $stdin);
-    json_response(['ok' => false, 'message' => $exception->getMessage(), 'result' => $result], CodeRunner::configured() ? 502 : 503);
+    json_response(['ok' => false, 'message' => $result['stderr'], 'result' => $result], 502);
 }
