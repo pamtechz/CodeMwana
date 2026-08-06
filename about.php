@@ -1,11 +1,64 @@
 <?php
 require_once __DIR__ . '/app/bootstrap.php';
 $stats = Learning::publicStatistics();
+$siteName = (string) setting('site_name', 'CodeMwana');
 $pageTitle = 'About';
-$pageDescription = 'How CodeMwana delivers structured, safe and database-backed programming education for children.';
+$pageDescription = 'How ' . $siteName . ' helps young people build programming skills through guided learning and practical work.';
 $bodyClass = 'content-page';
 require base_path('partials/header.php');
 ?>
-<section class="content-hero"><div class="container content-hero-grid"><div><span class="eyebrow">Purpose-built learning platform</span><h1>Programming education designed around clear progress.</h1><p><?= e(setting('site_description', 'CodeMwana combines guided curriculum, practical coding and measurable learner progress in one responsive platform.')) ?></p></div><div class="content-hero-stats"><div><strong><?= number_format($stats['courses']) ?></strong><span>Published paths</span></div><div><strong><?= number_format($stats['lessons']) ?></strong><span>Guided lessons</span></div><div><strong><?= number_format($stats['projects']) ?></strong><span>Saved projects</span></div></div></div></section>
-<section class="section"><div class="container prose-shell"><article class="panel prose-panel"><span class="eyebrow">The need</span><h2>Learning that works beyond ideal conditions</h2><p>Many beginner platforms assume constant internet access, unrestricted code execution and prior familiarity with technical language. CodeMwana uses lightweight pages, ordered lessons and a controlled beginner language so learners can focus on computational thinking without unnecessary complexity.</p><h2>How learning works</h2><p>Learners enrol in a published path, work through database-managed lessons, practise in Code Lab, answer assessment questions and receive immediate explanations. Progress, best scores, achievements and project versions remain connected to the learner account across sessions.</p><h2>Operational platform</h2><p>Teachers can review learner performance and difficult lessons. Administrators can manage accounts, curriculum, quiz questions, announcements and public settings. The public website, learner workspace and staff dashboards all read from the same relational database.</p></article><aside class="content-side"><section class="panel"><span class="eyebrow">Technical foundation</span><h2>Built for dependable operation</h2><ul class="check-list"><li>PHP 8.1+ with PDO and prepared statements</li><li>MySQL/MariaDB or SQLite persistence</li><li>Role-based access and CSRF protection</li><li>Password hashing and login rate limiting</li><li>Responsive external CSS and accessible controls</li><li>Controlled MwanaCode interpreter without eval()</li></ul></section><section class="panel"><span class="eyebrow">Coursework alignment</span><h2>ICT4410 Question 11</h2><p>The platform directly addresses the requirement to teach children basic programming skills and concepts while adding real account operations, curriculum management, reporting and persistent learner data.</p></section></aside></div></section>
+<section class="content-hero">
+    <div class="container content-hero-grid">
+        <div>
+            <span class="eyebrow">About <?= e($siteName) ?></span>
+            <h1>Clear programming education for young creators.</h1>
+            <p><?= e(setting('site_description', $siteName . ' combines guided lessons, practical coding and visible progress in one learner-friendly platform.')) ?></p>
+        </div>
+        <div class="content-hero-stats">
+            <div><strong><?= number_format($stats['courses']) ?></strong><span>Learning paths</span></div>
+            <div><strong><?= number_format($stats['lessons']) ?></strong><span>Guided lessons</span></div>
+            <div><strong><?= number_format($stats['languages']) ?></strong><span>Coding workspaces</span></div>
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="container prose-shell">
+        <article class="panel prose-panel">
+            <span class="eyebrow">Our purpose</span>
+            <h2>Make the first steps in coding understandable</h2>
+            <p>Programming can feel difficult when learners meet too many new ideas at once. <?= e($siteName) ?> organises learning into short lessons, examples, practical challenges and quizzes so each concept can be understood before the next one begins.</p>
+
+            <h2>Learn by creating</h2>
+            <p>Learners do more than read explanations. They write programs, test ideas, correct errors, build projects and review the progress saved to their accounts.</p>
+
+            <h2>Support for different learning stages</h2>
+            <p>Beginners can start with computational thinking and guided activities before moving into widely used programming languages and web-development workspaces.</p>
+
+            <h2>Designed for schools and independent learners</h2>
+            <p>The platform works across phones, tablets and computers. Teachers can guide learning and review progress, while learners keep their lessons, results and projects together.</p>
+        </article>
+
+        <aside class="content-side">
+            <section class="panel">
+                <span class="eyebrow">Learning experience</span>
+                <h2>What learners can do</h2>
+                <ul class="check-list">
+                    <li>Follow ordered learning paths</li>
+                    <li>Practise concepts in Code Lab</li>
+                    <li>Complete quizzes with feedback</li>
+                    <li>Save and continue coding projects</li>
+                    <li>Review progress and achievements</li>
+                    <li>Learn on different screen sizes</li>
+                </ul>
+            </section>
+            <section class="panel">
+                <span class="eyebrow">Need guidance?</span>
+                <h2>Use the Help centre</h2>
+                <p>Find clear instructions for signing in, beginning lessons, running programs, providing program input and saving projects.</p>
+                <a class="button button-secondary" href="<?= e(url('help.php')) ?>">Open Help centre</a>
+            </section>
+        </aside>
+    </div>
+</section>
 <?php require base_path('partials/footer.php'); ?>
