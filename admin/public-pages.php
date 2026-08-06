@@ -28,6 +28,7 @@ $headerCount = count(array_filter($pages, static fn (array $page): bool => (int)
 $footerCount = count(array_filter($pages, static fn (array $page): bool => (int) $page['show_in_footer'] === 1));
 $pageTitle = 'Public pages';
 $bodyClass = 'admin-public-pages-page';
+$pageStyles = ['curriculum.css', 'public-pages.css'];
 require base_path('partials/header.php');
 ?>
 <section class="workspace-section page-intro">
