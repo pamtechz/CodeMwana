@@ -17,6 +17,8 @@ final class RunnerFallbackException extends RuntimeException
 
 final class CodeRunner
 {
+    private const MANAGED_LANGUAGES = ['python', 'php', 'go', 'c', 'cpp'];
+
     public static function provider(): string
     {
         $provider = strtolower(trim((string) config('app.code_runner.provider', 'jdoodle')));
@@ -48,10 +50,16 @@ final class CodeRunner
         return $url;
     }
 
+    public static function isManagedLanguage(string $slug): bool
+    {
+        return in_array(strtolower(trim($slug)), self::MANAGED_LANGUAGES, true);
+    }
+
     public static function run(array $language, array $files, string $stdin = ''): array
     {
-        if (($language['execution_mode'] ?? '') !== 'remote') {
-            throw new RuntimeException('This language runs in the browser preview rather than the remote runner.');
+        $slug = strtolower(trim((string) ($language['slug'] ?? $language['runner_language'] ?? '')));
+        if (!self::isManagedLanguage($slug) && ($language['execution_mode'] ?? '') !== 'remote') {
+            throw new RuntimeException('This language runs in the browser preview rather than the managed runner.');
         }
         if (!$files) throw new InvalidArgumentException('At least one source file is required.');
 
