@@ -1,4 +1,4 @@
-# CodeMwana 3.5
+# CodeMwana 3.6
 
 CodeMwana is a responsive PHP learning platform for children, schools and young creators. It combines guided lessons, assessments, project work, progress tracking and role-based teaching operations.
 
@@ -25,12 +25,48 @@ Python source receives a server-side input compatibility prelude before executio
 
 Compiler credentials remain server-side. Learner code is never executed directly by the public PHP process.
 
+## Database-managed public pages
+
+Release 3.6 stores the following public information pages in the `public_pages` table:
+
+- About
+- About Us
+- About the App
+- About the Developers
+- Contact Us
+- Privacy and Safety
+- Help Centre
+
+The migration inserts missing defaults without overwriting later administrator edits. Existing About, Privacy and Help guidance, the supplied purpose and learning-experience content, and the default developer/contact information are seeded automatically.
+
+Administrators manage these records from `admin/public-pages.php`. Each page supports:
+
+- Navigation label
+- Browser title and metadata
+- Eyebrow, main heading and opening summary
+- Sanitised formatted content
+- Optional call-to-action label and link
+- Header and footer visibility
+- Publishing state
+- Navigation order
+
+Page slugs and PHP routes remain fixed so bookmarks and search links do not break. Public header and footer navigation are generated from the published page records.
+
+Supported dynamic tokens include:
+
+```text
+{{site_name}}
+{{organisation_name}}
+{{support_email}}
+{{course_list}}
+{{language_list}}
+{{registration_message}}
+{{current_year}}
+```
+
 ## Public production behaviour
 
-Release 3.5 separates public guidance from operational information:
-
-- `help.php` reads the current site name, registration state, support address, published paths and active languages.
-- About, Privacy and landing content use learner-facing language rather than deployment or database terminology.
+- Public information is edited through authenticated administrator controls.
 - System diagnostics require an administrator account.
 - The installer redirects to the normal site after installation.
 - Public service failures are generic; technical details are written only to private server logs.
@@ -43,7 +79,7 @@ Release 3.5 separates public guidance from operational information:
 - Login rate limiting
 - CSRF protection on state-changing requests
 - Role-based access controls
-- Escaped output and lesson-content sanitisation
+- Escaped output and content allowlist sanitisation
 - PHP-owned Content Security Policy
 - HSTS on HTTPS deployments
 - MIME sniffing, framing, referrer and permissions restrictions
@@ -74,7 +110,7 @@ No design can guarantee that a public application will never be attacked. These 
 7. Create the first administrator account.
 8. Sign in and verify the platform.
 
-After installation, `setup.php` redirects to the normal site. It may also be removed from the deployed server as an additional operational precaution.
+The installer runs migration `3.6.0`, creates the public-page table and seeds all seven page records before completing installation. After installation, `setup.php` redirects to the normal site.
 
 ## Managed execution configuration
 
@@ -101,13 +137,11 @@ The application validates the configured API host and fallback host before use. 
 
 1. Back up the database and deployed files.
 2. Pull or deploy the current source.
-3. Preserve the existing `.env` values and remove retired runner variables.
+3. Preserve the existing `.env` values.
 4. Restart the PHP/Apache service.
-5. Open the application once so migration `3.5.0` can update public content.
-6. Sign in as an administrator and review `system-status.php`.
+5. Open the application once so migration `3.6.0` creates and seeds public pages.
+6. Sign in as an administrator and review Public Pages and System Status.
 7. Clear the previous service worker when old Code Lab JavaScript remains cached.
-
-Current service-worker cache: `codemwana-static-v9`.
 
 ## Validation
 
