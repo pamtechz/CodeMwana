@@ -138,7 +138,7 @@ foreach (["new Set(['c', 'cpp', 'go'])", 'populateCode', 'triggerRun', 'payload.
 }
 
 $codeRunner = (string) file_get_contents($root . '/app/CodeRunner.php');
-foreach (['RunnerFallbackException', 'runJdoodle', 'JDOODLE', 'jdoodleRuntime', "'_provider' => 'jdoodle'", 'fallbackAvailable'] as $feature) {
+foreach (['RunnerFallbackException', 'runJdoodle', 'JDoodle', 'jdoodleRuntime', "'_provider' => 'jdoodle'", 'fallbackAvailable'] as $feature) {
     if (!str_contains($codeRunner, $feature)) $failures[] = "Code runner service is missing feature: {$feature}";
 }
 
