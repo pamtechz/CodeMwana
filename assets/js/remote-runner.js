@@ -30,6 +30,8 @@
   let frameSequence = 0;
   let running = false;
   let syncing = false;
+  let syncTimer = 0;
+  let activationTimer = 0;
 
   const embedLanguages = {
     python: 'python',
@@ -105,6 +107,13 @@
     });
   }
 
+  function sendToManagedFrame(message) {
+    if (!managedFrame?.contentWindow) return;
+    // Without allow-same-origin the sandbox has an opaque origin. The exact
+    // contentWindow is validated for incoming messages, so '*' is safe here.
+    managedFrame.contentWindow.postMessage(message, '*');
+  }
+
   function populateManagedEditor(files = managedFiles, triggerRun = false) {
     if (!managedFrame?.contentWindow || !supported.has(activeLanguage())) return;
     const language = activeLanguage();
@@ -113,16 +122,14 @@
       content: String(content),
     }));
 
-    managedFrame.contentWindow.postMessage({
+    sendToManagedFrame({
       eventType: 'populateCode',
       language: embedLanguages[language],
       files: payload,
-    }, managedOrigin);
+    });
 
     if (triggerRun) {
-      window.setTimeout(() => {
-        managedFrame.contentWindow?.postMessage({ eventType: 'triggerRun' }, managedOrigin);
-      }, 180);
+      window.setTimeout(() => sendToManagedFrame({ eventType: 'triggerRun' }), 180);
     }
   }
 
@@ -181,6 +188,11 @@
     }
   }
 
+  function scheduleActivation() {
+    window.clearTimeout(activationTimer);
+    activationTimer = window.setTimeout(activateManagedEditor, 40);
+  }
+
   function extractFiles(data) {
     const candidate = data?.files ?? data?.code?.files ?? data?.code;
     if (Array.isArray(candidate)) {
@@ -210,6 +222,7 @@
   }
 
   function syncManagedToCodeMwana() {
+    window.clearTimeout(syncTimer);
     if (syncing || !supported.has(activeLanguage()) || !editor) return;
     const files = normaliseFiles(managedFiles);
     const names = Object.keys(files);
@@ -230,6 +243,11 @@
     } finally {
       syncing = false;
     }
+  }
+
+  function scheduleSync() {
+    window.clearTimeout(syncTimer);
+    syncTimer = window.setTimeout(syncManagedToCodeMwana, 180);
   }
 
   function workspace() {
@@ -327,11 +345,12 @@
   }
 
   window.addEventListener('message', (event) => {
-    if (event.origin !== managedOrigin || event.source !== managedFrame?.contentWindow) return;
+    if (event.source !== managedFrame?.contentWindow) return;
+    if (event.origin !== managedOrigin && event.origin !== 'null') return;
     const files = extractFiles(event.data || {});
     if (!Object.keys(files).length) return;
     managedFiles = files;
-    syncManagedToCodeMwana();
+    scheduleSync();
   });
 
   document.addEventListener('click', (event) => {
@@ -361,9 +380,7 @@
     }
   }, true);
 
-  languageSelect?.addEventListener('change', () => {
-    window.setTimeout(activateManagedEditor, 0);
-  });
+  languageSelect?.addEventListener('change', scheduleActivation);
 
   if (saveButton) {
     saveButton.addEventListener('focus', () => {
@@ -371,5 +388,5 @@
     });
   }
 
-  window.setTimeout(activateManagedEditor, 0);
+  scheduleActivation();
 })();
