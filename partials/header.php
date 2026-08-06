@@ -7,7 +7,10 @@ $user = current_user();
 $siteName = (string) setting('site_name', 'CodeMwana');
 $tagline = (string) setting('site_tagline', 'Learn. Build. Shine.');
 $currentPath = str_replace('\\', '/', $_SERVER['PHP_SELF'] ?? '');
-$isRootDashboard = basename($currentPath) === 'dashboard.php' && !str_contains($currentPath, '/teacher/') && !str_contains($currentPath, '/admin/');
+$currentPage = basename($currentPath);
+$isRootDashboard = $currentPage === 'dashboard.php' && !str_contains($currentPath, '/teacher/') && !str_contains($currentPath, '/admin/');
+$privateIndexPages = ['login.php', 'register.php', 'setup.php', 'system-status.php'];
+$pageRobots = $pageRobots ?? (($user || in_array($currentPage, $privateIndexPages, true)) ? 'noindex,nofollow' : 'index,follow');
 ?>
 <!doctype html>
 <html lang="en">
@@ -16,6 +19,7 @@ $isRootDashboard = basename($currentPath) === 'dashboard.php' && !str_contains($
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#5B4BDB">
     <meta name="description" content="<?= e($pageDescription) ?>">
+    <meta name="robots" content="<?= e($pageRobots) ?>">
     <title><?= e(page_title($pageTitle)) ?></title>
     <link rel="manifest" href="<?= e(url('manifest.json')) ?>">
     <link rel="icon" href="<?= e(asset('img/favicon.svg')) ?>" type="image/svg+xml">
