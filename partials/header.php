@@ -11,6 +11,7 @@ $currentPage = basename($currentPath);
 $isRootDashboard = $currentPage === 'dashboard.php' && !str_contains($currentPath, '/teacher/') && !str_contains($currentPath, '/admin/');
 $privateIndexPages = ['login.php', 'register.php', 'setup.php', 'system-status.php'];
 $pageRobots = $pageRobots ?? (($user || in_array($currentPage, $privateIndexPages, true)) ? 'noindex,nofollow' : 'index,follow');
+$publicHeaderPages = $user ? [] : PublicPages::navigation('header');
 ?>
 <!doctype html>
 <html lang="en">
@@ -90,8 +91,7 @@ $pageRobots = $pageRobots ?? (($user || in_array($currentPage, $privateIndexPage
         <nav class="public-nav" id="public-nav" data-nav>
             <a href="<?= e(url('index.php#learning')) ?>">Learning paths</a>
             <a href="<?= e(url('index.php#experience')) ?>">Experience</a>
-            <a href="<?= e(url('about.php')) ?>">About</a>
-            <a href="<?= e(url('help.php')) ?>">Help</a>
+            <?php foreach ($publicHeaderPages as $publicPage): ?><a href="<?= e(PublicPages::urlFor((string) $publicPage['slug'])) ?>"><?= e((string) $publicPage['navigation_label']) ?></a><?php endforeach; ?>
             <a class="button button-secondary button-small" href="<?= e(url('login.php')) ?>">Sign in</a>
             <?php if ((string) setting('registration_open', '1') === '1'): ?><a class="button button-small" href="<?= e(url('register.php')) ?>">Create account</a><?php endif; ?>
         </nav>
