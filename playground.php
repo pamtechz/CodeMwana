@@ -47,8 +47,8 @@ $payload = [
     'stdin' => $stdin,
     'runnerConfigured' => CodeRunner::configured(),
     'fallbackAvailable' => CodeRunner::fallbackAvailable(),
-    'browserRunners' => ['python', 'php'],
-    'remoteRunners' => ['c', 'cpp', 'go'],
+    'browserRunners' => [],
+    'remoteRunners' => ['python', 'php', 'c', 'cpp', 'go'],
     'languages' => array_values(array_map(static function (array $language): array {
         return [
             'slug' => $language['slug'],
@@ -68,7 +68,7 @@ $payload = [
 $pageTitle = 'Code Lab';
 $bodyClass = 'code-lab-page';
 $pageStyles = ['remote-runner.css'];
-$pageScripts = ['remote-runner.js', 'playground.js', 'browser-runners.js'];
+$pageScripts = ['remote-runner.js', 'playground.js'];
 require base_path('partials/header.php');
 ?>
 <section
@@ -164,13 +164,12 @@ require base_path('partials/header.php');
             </div>
             <div class="output-surface preview-surface" data-output-view="preview">
                 <iframe sandbox="allow-scripts allow-modals" title="Code preview" data-preview-frame></iframe>
-                <div class="preview-message" data-preview-message>Preview is available for browser projects and managed execution workspaces.</div>
+                <div class="preview-message" data-preview-message>Preview is available for browser projects.</div>
                 <div class="external-runner-shell" data-external-runner hidden>
                     <iframe
                         title="Code execution workspace"
                         data-external-runner-frame
-                        sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads"
-                        allow="clipboard-read; clipboard-write; fullscreen"
+                        sandbox="allow-scripts allow-forms allow-modals"
                         referrerpolicy="strict-origin-when-cross-origin"
                     ></iframe>
                 </div>
@@ -187,12 +186,12 @@ require base_path('partials/header.php');
             <div class="studio-panel-head"><div><strong>Standard input</strong><small>Text supplied to programs that read from input.</small></div><button class="studio-icon-button" type="button" data-close-stdin aria-label="Close standard input panel"><?= icon('x') ?></button></div>
             <label for="standard-input">Program input</label>
             <textarea id="standard-input" rows="8" data-stdin></textarea>
-            <p>Each line is sent in order. Python input(), PHP STDIN, and managed compiler input are supported.</p>
+            <p>Each line is supplied to managed programs that read standard input.</p>
         </div>
     </aside>
 
     <footer class="studio-footer">
-        <span><?= icon('shield-check') ?> Code runs use browser sandboxes or managed online execution. An alternate environment opens automatically when the primary service is unavailable.</span>
+        <span><?= icon('shield-check') ?> Browser projects use isolated previews. Python, PHP, C, C++ and Go use one synchronized managed workspace.</span>
         <span data-workspace-size>0 characters</span>
     </footer>
 </section>
