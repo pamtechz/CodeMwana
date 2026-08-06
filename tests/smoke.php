@@ -13,8 +13,8 @@ $required = [
     'api/log-browser-run.php', 'assets/css/app.css', 'assets/css/app-v3.css', 'assets/css/app-v4.css',
     'assets/css/curriculum.css', 'assets/css/remote-runner.css', 'assets/js/app.js',
     'assets/js/ui-v4.js', 'assets/js/remote-runner.js', 'assets/js/playground.js',
-    'assets/js/browser-runners.js', 'assets/js/curriculum.js', 'database/schema_mysql.sql',
-    'database/schema_sqlite.sql', 'database/seed.php', 'README.md'
+    'assets/js/curriculum.js', 'database/schema_mysql.sql', 'database/schema_sqlite.sql',
+    'database/seed.php', 'README.md'
 ];
 
 $failures = [];
@@ -35,7 +35,7 @@ foreach ($phpFiles as $file) {
     if ($code !== 0) $failures[] = implode("\n", $output);
 }
 
-foreach (['assets/js/app.js', 'assets/js/ui-v4.js', 'assets/js/remote-runner.js', 'assets/js/playground.js', 'assets/js/browser-runners.js', 'assets/js/curriculum.js', 'service-worker.js'] as $script) {
+foreach (['assets/js/app.js', 'assets/js/ui-v4.js', 'assets/js/remote-runner.js', 'assets/js/playground.js', 'assets/js/curriculum.js', 'service-worker.js'] as $script) {
     $path = $root . DIRECTORY_SEPARATOR . $script;
     if (is_file($path) && trim((string) shell_exec('command -v node 2>/dev/null')) !== '') {
         $output = [];
@@ -123,39 +123,41 @@ foreach (['data-document-editor', 'data-editor-surface', 'content_html', 'Curric
 }
 
 $playground = (string) file_get_contents($root . '/playground.php');
-foreach (['data-language-select', 'data-file-tree', 'data-stdin', 'data-preview-frame', 'api/run-code.php', 'browser-runners.js', 'remote-runner.js', 'data-external-runner-frame', "'browserRunners' => ['python', 'php']", "'remoteRunners' => ['c', 'cpp', 'go']"] as $feature) {
+foreach (['data-language-select', 'data-file-tree', 'data-stdin', 'data-preview-frame', 'api/run-code.php', 'remote-runner.js', 'data-external-runner-frame', "'browserRunners' => []", "'remoteRunners' => ['python', 'php', 'c', 'cpp', 'go']", 'sandbox="allow-scripts allow-forms allow-modals"'] as $feature) {
     if (!str_contains($playground, $feature)) $failures[] = "Code Lab is missing feature declaration: {$feature}";
 }
-
-$browserRunners = (string) file_get_contents($root . '/assets/js/browser-runners.js');
-foreach (['@antonz/codapi@0.20.0', "new Set(['python', 'php'])", "setAttribute('engine', 'wasi')", 'pythonSource', 'phpSource', 'codapi-snippet'] as $feature) {
-    if (!str_contains($browserRunners, $feature)) $failures[] = "Browser runner module is missing feature: {$feature}";
+foreach (['browser-runners.js', 'allow-scripts allow-same-origin', '@antonz/codapi', 'engine="wasi"'] as $retiredFeature) {
+    if (str_contains($playground, $retiredFeature)) $failures[] = "Code Lab still contains retired or unsafe declaration: {$retiredFeature}";
 }
 
 $remoteRunner = (string) file_get_contents($root . '/assets/js/remote-runner.js');
-foreach (["new Set(['c', 'cpp', 'go'])", 'populateCode', 'triggerRun', 'payload.fallback', 'https://onecompiler.com'] as $feature) {
-    if (!str_contains($remoteRunner, $feature)) $failures[] = "Remote runner module is missing feature: {$feature}";
+foreach (["new Set(['python', 'php', 'c', 'cpp', 'go'])", 'populateCode', 'triggerRun', 'payload.fallback', 'data-managed-editor', 'codeChangeEvent', "event.origin !== 'null'", 'scheduleSync'] as $feature) {
+    if (!str_contains($remoteRunner, $feature)) $failures[] = "Managed runner module is missing feature: {$feature}";
+}
+if (str_contains($remoteRunner, "setAttribute('engine', 'wasi')") || str_contains($remoteRunner, 'codapi-snippet')) {
+    $failures[] = 'Managed runner must not use the retired WASI widget.';
 }
 
 $codeRunner = (string) file_get_contents($root . '/app/CodeRunner.php');
-foreach (['RunnerFallbackException', 'runJdoodle', 'JDoodle', 'jdoodleRuntime', "'_provider' => 'jdoodle'", 'fallbackAvailable'] as $feature) {
+foreach (['RunnerFallbackException', 'MANAGED_LANGUAGES', "['python', 'php', 'go', 'c', 'cpp']", 'isManagedLanguage', 'runJdoodle', 'jdoodleRuntime', "'_provider' => 'jdoodle'", 'fallbackAvailable'] as $feature) {
     if (!str_contains($codeRunner, $feature)) $failures[] = "Code runner service is missing feature: {$feature}";
 }
 
 $runApi = (string) file_get_contents($root . '/api/run-code.php');
-foreach (['RunnerFallbackException', "'fallback' => CodeRunner::fallbackAvailable()", 'code_runner_fallback'] as $feature) {
-    if (!str_contains($runApi, $feature)) $failures[] = "Run API is missing fallback declaration: {$feature}";
+foreach (['RunnerFallbackException', 'CodeRunner::isManagedLanguage', "'fallback' => CodeRunner::fallbackAvailable()", 'code_runner_fallback'] as $feature) {
+    if (!str_contains($runApi, $feature)) $failures[] = "Run API is missing managed fallback declaration: {$feature}";
 }
 
 $remoteCss = (string) file_get_contents($root . '/assets/css/remote-runner.css');
-foreach (['.external-runner-shell', '.has-external-runner', '@media (max-width: 520px)'] as $feature) {
-    if (!str_contains($remoteCss, $feature)) $failures[] = "Remote runner stylesheet is missing: {$feature}";
+foreach (['.external-runner-shell', 'data-managed-editor', '.studio-editor > .external-runner-shell', '@media (max-width: 520px)'] as $feature) {
+    if (!str_contains($remoteCss, $feature)) $failures[] = "Managed runner stylesheet is missing: {$feature}";
 }
 
 $serviceWorker = (string) file_get_contents($root . '/service-worker.js');
-foreach (['codemwana-static-v7', 'assets/js/browser-runners.js', 'assets/js/remote-runner.js', 'assets/css/remote-runner.css'] as $feature) {
-    if (!str_contains($serviceWorker, $feature)) $failures[] = "Service worker is missing runner cache declaration: {$feature}";
+foreach (['codemwana-static-v8', 'assets/js/remote-runner.js', 'assets/css/remote-runner.css'] as $feature) {
+    if (!str_contains($serviceWorker, $feature)) $failures[] = "Service worker is missing managed runner cache declaration: {$feature}";
 }
+if (str_contains($serviceWorker, 'assets/js/browser-runners.js')) $failures[] = 'Service worker still caches the retired browser runner.';
 
 $environmentExample = (string) file_get_contents($root . '/.env.example');
 foreach (['CODE_RUNNER_PROVIDER=jdoodle', 'JDOODLE_CLIENT_ID=', 'JDOODLE_CLIENT_SECRET=', 'ONECOMPILER_EMBED_URL=https://onecompiler.com/embed'] as $feature) {
@@ -172,4 +174,4 @@ if ($failures) {
     exit(1);
 }
 
-echo 'Smoke checks passed for ' . count($phpFiles) . " PHP files, ten languages, browser runtimes, JDoodle execution, embedded fallback, responsive curriculum pages and intelligent installation state.\n";
+echo 'Smoke checks passed for ' . count($phpFiles) . " PHP files, ten languages, five managed editor runtimes, secure sandboxing, JDoodle execution, automatic embedded fallback, responsive curriculum pages and intelligent installation state.\n";
