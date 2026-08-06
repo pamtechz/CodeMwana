@@ -15,7 +15,7 @@ $stdin = (string) ($data['stdin'] ?? '');
 $projectId = (int) ($data['project_id'] ?? 0);
 
 if (!$language) json_response(['ok' => false, 'message' => 'Select a supported programming language.'], 422);
-if (($language['execution_mode'] ?? '') !== 'remote') {
+if (!CodeRunner::isManagedLanguage($languageSlug) && ($language['execution_mode'] ?? '') !== 'remote') {
     json_response(['ok' => false, 'message' => 'This language runs inside the browser preview.'], 422);
 }
 if (!$files) json_response(['ok' => false, 'message' => 'Add at least one source file before running the project.'], 422);
