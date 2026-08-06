@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 $root = dirname(__DIR__);
 $required = [
+    '.htaccess', '.env.example', '.github/workflows/quality.yml',
     'index.php', 'about.php', 'privacy.php', 'help.php', 'login.php', 'register.php',
     'dashboard.php', 'courses.php', 'course.php', 'lesson.php', 'quiz.php', 'playground.php',
     'projects.php', 'progress.php', 'profile.php', 'setup.php', 'system-status.php',
@@ -13,7 +14,7 @@ $required = [
     'assets/css/app-v3.css', 'assets/css/app-v4.css', 'assets/css/remote-runner.css',
     'assets/js/app.js', 'assets/js/ui-v4.js', 'assets/js/managed-frame-compat.js',
     'assets/js/remote-runner.js', 'assets/js/playground.js', 'service-worker.js',
-    'database/schema_mysql.sql', 'database/schema_sqlite.sql', 'README.md'
+    'database/schema_mysql.sql', 'database/schema_sqlite.sql', 'tests/python_input_guard.php'
 ];
 
 $failures = [];
@@ -73,16 +74,37 @@ foreach ([
     if (!str_contains($bootstrap, $feature)) $failures[] = "Production response hardening is missing: {$feature}";
 }
 
+$apache = (string) file_get_contents($root . '/.htaccess');
+foreach (['Options -Indexes', 'app|config|database|docs|partials|storage|tests', 'Require all denied'] as $feature) {
+    if (!str_contains($apache, $feature)) $failures[] = "Apache public-surface protection is missing: {$feature}";
+}
+if (stripos($apache, 'Content-Security-Policy') !== false || stripos($apache, 'Header always set') !== false) {
+    $failures[] = 'Apache must not duplicate PHP-owned response headers.';
+}
+
 $codeRunner = (string) file_get_contents($root . '/app/CodeRunner.php');
 foreach ([
     'PYTHON_INPUT_GUARD',
     '__codemwana_safe_input',
     'except EOFError',
-    'prepareSourceFiles',
+    'injectPythonInputGuard',
     'sanitiseProgramOutput',
+    "API_HOST = 'api.jdoodle.com'",
+    "FALLBACK_HOST = 'onecompiler.com'",
     "'_provider' => 'managed'",
 ] as $feature) {
     if (!str_contains($codeRunner, $feature)) $failures[] = "Managed execution hardening is missing: {$feature}";
+}
+foreach (['runPiston', 'CODE_RUNNER_URL', "config('app.code_runner.url'", "config('app.code_runner.token'"] as $forbidden) {
+    if (str_contains($codeRunner, $forbidden)) $failures[] = "Managed execution retains an unnecessary external runner path: {$forbidden}";
+}
+
+$config = (string) file_get_contents($root . '/config/app.php');
+$environment = (string) file_get_contents($root . '/.env.example');
+foreach (['CODE_RUNNER_URL', 'CODE_RUNNER_TOKEN', 'CODE_RUNNER_PROVIDER'] as $forbidden) {
+    if (str_contains($config, $forbidden) || str_contains($environment, $forbidden)) {
+        $failures[] = "Legacy runner configuration remains: {$forbidden}";
+    }
 }
 
 $runApi = (string) file_get_contents($root . '/api/run-code.php');
@@ -111,6 +133,14 @@ foreach (["removeAttribute('sandbox')", 'data-external-runner-frame'] as $featur
 
 $systemStatus = (string) file_get_contents($root . '/system-status.php');
 if (!str_contains($systemStatus, "require_role('admin')")) $failures[] = 'System diagnostics must be restricted to administrators.';
+
+$setup = (string) file_get_contents($root . '/setup.php');
+if (!str_contains($setup, "if (Installation::installed()) redirect('index.php')")) {
+    $failures[] = 'The installer must be disabled after installation.';
+}
+if (str_contains($setup, 'PHP_VERSION') || str_contains($setup, '<code>.env</code>')) {
+    $failures[] = 'The installer still renders implementation details.';
+}
 
 $installation = (string) file_get_contents($root . '/app/Installation.php');
 foreach (['Service temporarily unavailable', 'logTechnical', 'meta name="robots" content="noindex,nofollow"'] as $feature) {
@@ -141,12 +171,22 @@ foreach (['database-backed', 'curriculum database', 'platform administrator', 'L
     if (stripos($index, $forbidden) !== false) $failures[] = "Landing page exposes internal terminology: {$forbidden}";
 }
 
+$header = (string) file_get_contents($root . '/partials/header.php');
+foreach (['meta name="robots"', 'noindex,nofollow', "'setup.php', 'system-status.php'"] as $feature) {
+    if (!str_contains($header, $feature)) $failures[] = "Private-page indexing protection is missing: {$feature}";
+}
+
 $footer = (string) file_get_contents($root . '/partials/footer.php');
 if (str_contains($footer, "config('app.version'")) $failures[] = 'The shared footer still discloses the software version.';
 
 $migrator = (string) file_get_contents($root . '/app/Migrator.php');
 foreach (["VERSION = '3.5.0'", 'refreshPublicContent', 'Multi-language Code Lab', 'Multi-file project workspace'] as $feature) {
     if (!str_contains($migrator, $feature)) $failures[] = "Production content migration is missing: {$feature}";
+}
+
+$workflow = (string) file_get_contents($root . '/.github/workflows/quality.yml');
+foreach (['php tests/smoke.php', 'php tests/python_input_guard.php'] as $feature) {
+    if (!str_contains($workflow, $feature)) $failures[] = "Quality workflow is missing: {$feature}";
 }
 
 $serviceWorker = (string) file_get_contents($root . '/service-worker.js');
@@ -160,4 +200,4 @@ if ($failures) {
     exit(1);
 }
 
-echo 'Smoke checks passed for ' . count($phpFiles) . " PHP files, production headers, secure sessions, public content, dynamic help and managed language execution.\n";
+echo 'Smoke checks passed for ' . count($phpFiles) . " PHP files, production headers, protected internals, secure sessions, public content, dynamic help and managed language execution.\n";
