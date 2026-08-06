@@ -31,7 +31,9 @@ Each workspace supports database-backed starter files, project ownership, standa
 
 The local CodeMwana textarea and duplicate file sidebar are hidden while a managed language is selected. Project data remains synchronized with CodeMwana so Save, project ownership, version history and run logging continue to work.
 
-JDoodle credentials stay on the server. They are never included in browser JavaScript. The embedded workspace is sandboxed without `allow-same-origin`; communication is limited to the exact iframe window through `postMessage`.
+JDoodle credentials stay on the server and are never included in browser JavaScript. The OneCompiler workspace loads as a normal cross-origin iframe, matching its official embed model. CodeMwana sends and accepts editor messages only through the expected `https://onecompiler.com` origin and the exact iframe window. Browser same-origin protections prevent the external frame from reading the CodeMwana document.
+
+When the standard-input field is completely empty, CodeMwana supplies one blank input line to managed execution. This allows beginner patterns such as `input().strip() or 'Learner'`, `fgets(STDIN)` and `getline()` to receive an empty value instead of immediately reaching EOF.
 
 CodeMwana never runs untrusted learner code directly through PHP on the application server.
 
@@ -109,7 +111,7 @@ When JDoodle credentials are absent or the primary call cannot be completed, Cod
 6. Run `php tests/smoke.php`.
 7. Unregister the old service worker or hard-refresh when an older Code Lab remains cached.
 
-The current service-worker cache is `codemwana-static-v8` and no longer caches the retired Codapi browser runner.
+The current service-worker cache is `codemwana-static-v9`. It includes the frame-compatibility loader and no longer caches the retired Codapi browser runner.
 
 ## Main directories
 
@@ -129,4 +131,4 @@ The current service-worker cache is `codemwana-static-v8` and no longer caches t
 php tests/smoke.php
 ```
 
-The smoke test validates PHP and JavaScript syntax when the relevant runtimes are available, ten language definitions, the five-language managed editor, secure iframe sandboxing, JDoodle execution, embedded fallback, responsive assets, installation state and required database tables.
+The smoke test validates PHP and JavaScript syntax when the relevant runtimes are available, ten language definitions, the five-language managed editor, JDoodle blank-input handling, OneCompiler origin compatibility, embedded fallback, responsive assets, installation state and required database tables.
