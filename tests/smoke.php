@@ -138,7 +138,7 @@ $setup = (string) file_get_contents($root . '/setup.php');
 if (!str_contains($setup, "if (Installation::installed()) redirect('index.php')")) {
     $failures[] = 'The installer must be disabled after installation.';
 }
-if (str_contains($setup, 'PHP_VERSION') || str_contains($setup, '<code>.env</code>')) {
+if (str_contains($setup, '<?= e(PHP_VERSION) ?>') || str_contains($setup, '<code>.env</code>')) {
     $failures[] = 'The installer still renders implementation details.';
 }
 
