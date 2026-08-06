@@ -10,10 +10,11 @@ $required = [
     'admin/course-edit.php', 'admin/lesson-edit.php', 'admin/questions.php', 'admin/settings.php',
     'teacher/dashboard.php', 'teacher/learner.php', 'app/Installation.php', 'app/Migrator.php',
     'app/LanguageCatalog.php', 'app/CodeRunner.php', 'api/save-project.php', 'api/run-code.php',
-    'assets/css/app.css', 'assets/css/app-v3.css', 'assets/css/app-v4.css', 'assets/css/curriculum.css',
-    'assets/js/app.js', 'assets/js/ui-v4.js', 'assets/js/playground.js', 'assets/js/browser-runners.js',
-    'assets/js/curriculum.js', 'database/schema_mysql.sql', 'database/schema_sqlite.sql',
-    'database/seed.php', 'README.md'
+    'api/log-browser-run.php', 'assets/css/app.css', 'assets/css/app-v3.css', 'assets/css/app-v4.css',
+    'assets/css/curriculum.css', 'assets/css/remote-runner.css', 'assets/js/app.js',
+    'assets/js/ui-v4.js', 'assets/js/remote-runner.js', 'assets/js/playground.js',
+    'assets/js/browser-runners.js', 'assets/js/curriculum.js', 'database/schema_mysql.sql',
+    'database/schema_sqlite.sql', 'database/seed.php', 'README.md'
 ];
 
 $failures = [];
@@ -34,7 +35,7 @@ foreach ($phpFiles as $file) {
     if ($code !== 0) $failures[] = implode("\n", $output);
 }
 
-foreach (['assets/js/app.js', 'assets/js/ui-v4.js', 'assets/js/playground.js', 'assets/js/browser-runners.js', 'assets/js/curriculum.js', 'service-worker.js'] as $script) {
+foreach (['assets/js/app.js', 'assets/js/ui-v4.js', 'assets/js/remote-runner.js', 'assets/js/playground.js', 'assets/js/browser-runners.js', 'assets/js/curriculum.js', 'service-worker.js'] as $script) {
     $path = $root . DIRECTORY_SEPARATOR . $script;
     if (is_file($path) && trim((string) shell_exec('command -v node 2>/dev/null')) !== '') {
         $output = [];
@@ -122,7 +123,7 @@ foreach (['data-document-editor', 'data-editor-surface', 'content_html', 'Curric
 }
 
 $playground = (string) file_get_contents($root . '/playground.php');
-foreach (['data-language-select', 'data-file-tree', 'data-stdin', 'data-preview-frame', 'api/run-code.php', 'browser-runners.js', "'browserRunners' => ['python', 'php']"] as $feature) {
+foreach (['data-language-select', 'data-file-tree', 'data-stdin', 'data-preview-frame', 'api/run-code.php', 'browser-runners.js', 'remote-runner.js', 'data-external-runner-frame', "'browserRunners' => ['python', 'php']", "'remoteRunners' => ['c', 'cpp', 'go']"] as $feature) {
     if (!str_contains($playground, $feature)) $failures[] = "Code Lab is missing feature declaration: {$feature}";
 }
 
@@ -131,9 +132,34 @@ foreach (['@antonz/codapi@0.20.0', "new Set(['python', 'php'])", "setAttribute('
     if (!str_contains($browserRunners, $feature)) $failures[] = "Browser runner module is missing feature: {$feature}";
 }
 
+$remoteRunner = (string) file_get_contents($root . '/assets/js/remote-runner.js');
+foreach (["new Set(['c', 'cpp', 'go'])", 'populateCode', 'triggerRun', 'payload.fallback', 'https://onecompiler.com'] as $feature) {
+    if (!str_contains($remoteRunner, $feature)) $failures[] = "Remote runner module is missing feature: {$feature}";
+}
+
+$codeRunner = (string) file_get_contents($root . '/app/CodeRunner.php');
+foreach (['RunnerFallbackException', 'runJdoodle', 'JDOODLE', 'jdoodleRuntime', "'_provider' => 'jdoodle'", 'fallbackAvailable'] as $feature) {
+    if (!str_contains($codeRunner, $feature)) $failures[] = "Code runner service is missing feature: {$feature}";
+}
+
+$runApi = (string) file_get_contents($root . '/api/run-code.php');
+foreach (['RunnerFallbackException', "'fallback' => CodeRunner::fallbackAvailable()", 'code_runner_fallback'] as $feature) {
+    if (!str_contains($runApi, $feature)) $failures[] = "Run API is missing fallback declaration: {$feature}";
+}
+
+$remoteCss = (string) file_get_contents($root . '/assets/css/remote-runner.css');
+foreach (['.external-runner-shell', '.has-external-runner', '@media (max-width: 520px)'] as $feature) {
+    if (!str_contains($remoteCss, $feature)) $failures[] = "Remote runner stylesheet is missing: {$feature}";
+}
+
 $serviceWorker = (string) file_get_contents($root . '/service-worker.js');
-foreach (['codemwana-static-v6', 'assets/js/browser-runners.js'] as $feature) {
-    if (!str_contains($serviceWorker, $feature)) $failures[] = "Service worker is missing browser runtime cache declaration: {$feature}";
+foreach (['codemwana-static-v7', 'assets/js/browser-runners.js', 'assets/js/remote-runner.js', 'assets/css/remote-runner.css'] as $feature) {
+    if (!str_contains($serviceWorker, $feature)) $failures[] = "Service worker is missing runner cache declaration: {$feature}";
+}
+
+$environmentExample = (string) file_get_contents($root . '/.env.example');
+foreach (['CODE_RUNNER_PROVIDER=jdoodle', 'JDOODLE_CLIENT_ID=', 'JDOODLE_CLIENT_SECRET=', 'ONECOMPILER_EMBED_URL=https://onecompiler.com/embed'] as $feature) {
+    if (!str_contains($environmentExample, $feature)) $failures[] = "Environment example is missing runner setting: {$feature}";
 }
 
 $footerSource = (string) file_get_contents($root . '/partials/footer.php');
@@ -146,4 +172,4 @@ if ($failures) {
     exit(1);
 }
 
-echo 'Smoke checks passed for ' . count($phpFiles) . " PHP files, ten languages, no-install Python/PHP runtimes, responsive curriculum pages, modern scrolling and intelligent installation state.\n";
+echo 'Smoke checks passed for ' . count($phpFiles) . " PHP files, ten languages, browser runtimes, JDoodle execution, embedded fallback, responsive curriculum pages and intelligent installation state.\n";
