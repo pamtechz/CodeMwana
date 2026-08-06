@@ -1,4 +1,4 @@
-const CACHE_NAME = 'codemwana-static-v7';
+const CACHE_NAME = 'codemwana-static-v8';
 const STATIC_ASSETS = [
   './offline.html',
   './assets/css/app.css',
@@ -10,7 +10,6 @@ const STATIC_ASSETS = [
   './assets/js/ui-v4.js',
   './assets/js/remote-runner.js',
   './assets/js/playground.js',
-  './assets/js/browser-runners.js',
   './assets/js/curriculum.js',
   './assets/img/favicon.svg'
 ];
