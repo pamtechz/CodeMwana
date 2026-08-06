@@ -29,6 +29,7 @@ if (!$page) {
 $pageTitle = PublicPages::resolveText((string) $page['title']);
 $pageDescription = PublicPages::resolveText((string) $page['meta_description']);
 $bodyClass = 'content-page managed-public-page';
+$pageStyles = ['public-pages.css'];
 $heroTitle = PublicPages::resolveText((string) $page['hero_title']);
 $heroText = PublicPages::resolveText((string) $page['hero_text']);
 $eyebrow = PublicPages::resolveText((string) $page['eyebrow']);
