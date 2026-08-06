@@ -35,7 +35,9 @@ $heroText = PublicPages::resolveText((string) $page['hero_text']);
 $eyebrow = PublicPages::resolveText((string) $page['eyebrow']);
 $content = PublicPages::resolveHtml((string) $page['content_html']);
 $ctaLabel = PublicPages::resolveText((string) ($page['cta_label'] ?? ''));
-$ctaUrl = PublicPages::resolveUrl((string) ($page['cta_url'] ?? ''));
+$rawCtaUrl = trim((string) ($page['cta_url'] ?? ''));
+$missingSupportContact = str_contains($rawCtaUrl, '{{support_email}}') && trim((string) setting('support_email', '')) === '';
+$ctaUrl = $missingSupportContact ? '' : PublicPages::resolveUrl($rawCtaUrl);
 $related = array_values(array_filter(
     PublicPages::all(true),
     static fn (array $item): bool => (string) $item['slug'] !== $slug
