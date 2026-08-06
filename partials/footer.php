@@ -21,6 +21,7 @@
 <?php
 $pageScripts = is_array($pageScripts ?? null) ? $pageScripts : [];
 if (!empty($pageScript)) $pageScripts[] = $pageScript;
+if (in_array('remote-runner.js', $pageScripts, true)) array_unshift($pageScripts, 'managed-frame-compat.js');
 foreach (array_unique(array_filter($pageScripts)) as $script):
 ?>
 <script src="<?= e(asset('js/' . $script)) ?>" defer></script>
