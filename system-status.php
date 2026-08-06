@@ -1,17 +1,17 @@
 <?php
 require_once __DIR__ . '/app/bootstrap.php';
+require_role('admin');
 
 $state = Installation::state(true);
 $checks = [
-    ['PHP version', PHP_VERSION, version_compare(PHP_VERSION, '8.1.0', '>=')],
-    ['Database connection', $state['database_error'] ? 'Unavailable' : 'Connected', !$state['database_error']],
-    ['Installation state', $state['installed'] ? 'Installed' : 'Not complete', $state['installed']],
-    ['Installation lock', $state['lock_exists'] ? 'Present' : 'Not present', $state['lock_exists'] || $state['installed']],
-    ['Setup file', $state['setup_exists'] ? 'Present' : 'Removed', $state['installed'] || $state['setup_exists']],
-    ['Schema version', $state['schema_version'] ?: 'Not detected', $state['installed']],
-    ['Browser runtimes', 'Python and PHP available without an API key', true],
-    ['Primary compiler API', CodeRunner::configured() ? 'Credentials configured' : 'Credentials missing—backup will be used', true],
-    ['Backup execution workspace', CodeRunner::fallbackAvailable() ? 'Available' : 'Not configured', CodeRunner::fallbackAvailable()],
+    ['Application runtime', version_compare(PHP_VERSION, '8.1.0', '>=') ? 'Ready' : 'Update required', version_compare(PHP_VERSION, '8.1.0', '>=')],
+    ['Data service', $state['database_error'] ? 'Unavailable' : 'Connected', !$state['database_error']],
+    ['Installation state', $state['installed'] ? 'Ready' : 'Incomplete', $state['installed']],
+    ['Application lock', $state['lock_exists'] ? 'Present' : 'Not present', $state['lock_exists'] || $state['installed']],
+    ['Schema state', $state['schema_version'] ? 'Detected' : 'Not detected', $state['installed']],
+    ['Browser learning tools', 'Ready', true],
+    ['Managed execution', CodeRunner::configured() ? 'Primary service ready' : 'Alternate workspace active', true],
+    ['Alternate workspace', CodeRunner::fallbackAvailable() ? 'Ready' : 'Not configured', CodeRunner::fallbackAvailable()],
 ];
 $pageTitle = 'System status';
 $bodyClass = 'system-status-page';
@@ -19,14 +19,14 @@ require base_path('partials/header.php');
 ?>
 <section class="section compact-section">
     <div class="container narrow">
-        <div class="page-intro compact-intro"><div><span class="eyebrow">Operational diagnostics</span><h1>CodeMwana system status</h1><p>This page checks installation, database and Code Lab readiness without sending the application back to setup.php.</p></div></div>
+        <div class="page-intro compact-intro"><div><span class="eyebrow">Restricted diagnostics</span><h1>System status</h1><p>Operational checks are visible only to authorised administrators.</p></div></div>
         <section class="panel status-check-list">
             <?php foreach ($checks as [$label, $value, $ok]): ?>
                 <div class="status-check-row"><span class="status-check-icon <?= $ok ? 'success' : 'danger' ?>"><?= icon($ok ? 'check-circle' : 'alert-circle') ?></span><div><strong><?= e($label) ?></strong><small><?= e($value) ?></small></div></div>
             <?php endforeach; ?>
         </section>
-        <?php if ($state['database_error']): ?><div class="alert alert-danger"><?= icon('alert-circle') ?><span>The configured database could not be reached. Confirm the database service and .env credentials. The platform will not redirect to setup while an installation lock exists.</span></div><?php endif; ?>
-        <div class="status-actions"><a class="button" href="<?= e(url('index.php')) ?>"><?= icon('home') ?>Return to platform</a><?php if (!$state['installed'] && $state['setup_exists']): ?><a class="button button-secondary" href="<?= e(url('setup.php')) ?>">Open installer</a><?php endif; ?></div>
+        <?php if ($state['database_error']): ?><div class="alert alert-danger"><?= icon('alert-circle') ?><span>A required service is unavailable. Review the private server logs and hosting control panel.</span></div><?php endif; ?>
+        <div class="status-actions"><a class="button" href="<?= e(url('admin/dashboard.php')) ?>"><?= icon('arrow-left') ?>Return to administration</a></div>
     </div>
 </section>
 <?php require base_path('partials/footer.php'); ?>
