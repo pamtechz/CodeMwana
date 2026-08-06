@@ -109,9 +109,16 @@
 
   function sendToManagedFrame(message) {
     if (!managedFrame?.contentWindow) return;
-    // Without allow-same-origin the sandbox has an opaque origin. The exact
-    // contentWindow is validated for incoming messages, so '*' is safe here.
-    managedFrame.contentWindow.postMessage(message, '*');
+    managedFrame.contentWindow.postMessage(message, managedOrigin);
+  }
+
+  function currentInput() {
+    return String(stdin?.value ?? '');
+  }
+
+  function executionInput() {
+    const value = currentInput();
+    return value === '' ? '\n' : value;
   }
 
   function populateManagedEditor(files = managedFiles, triggerRun = false) {
@@ -126,6 +133,7 @@
       eventType: 'populateCode',
       language: embedLanguages[language],
       files: payload,
+      stdin: currentInput(),
     });
 
     if (triggerRun) {
@@ -134,10 +142,10 @@
   }
 
   function schedulePopulate(sequence, triggerRun = false) {
-    [0, 350, 950].forEach((delay, index) => {
+    [250, 850].forEach((delay, index) => {
       window.setTimeout(() => {
         if (sequence !== frameSequence || activeLanguage() !== managedLanguage) return;
-        populateManagedEditor(managedFiles, triggerRun && index === 2);
+        populateManagedEditor(managedFiles, triggerRun && index === 1);
       }, delay);
     });
   }
@@ -190,7 +198,7 @@
 
   function scheduleActivation() {
     window.clearTimeout(activationTimer);
-    activationTimer = window.setTimeout(activateManagedEditor, 40);
+    activationTimer = window.setTimeout(activateManagedEditor, 60);
   }
 
   function extractFiles(data) {
@@ -213,6 +221,11 @@
       };
     }
     return {};
+  }
+
+  function extractInput(data) {
+    const candidate = data?.stdin ?? data?.input ?? data?.code?.stdin ?? data?.code?.input;
+    return typeof candidate === 'string' ? candidate : null;
   }
 
   function openLocalFile(name) {
@@ -247,7 +260,7 @@
 
   function scheduleSync() {
     window.clearTimeout(syncTimer);
-    syncTimer = window.setTimeout(syncManagedToCodeMwana, 180);
+    syncTimer = window.setTimeout(syncManagedToCodeMwana, 220);
   }
 
   function workspace() {
@@ -289,7 +302,7 @@
   function runInManagedWorkspace(files) {
     setMobileView('editor');
     populateManagedEditor(files, false);
-    window.setTimeout(() => populateManagedEditor(files, true), 360);
+    window.setTimeout(() => sendToManagedFrame({ eventType: 'triggerRun' }), 500);
   }
 
   async function runManagedProgram() {
@@ -316,7 +329,7 @@
           project_id: currentProjectId(),
           language,
           files,
-          stdin: stdin?.value || '',
+          stdin: executionInput(),
         }),
       });
       const payload = await response.json().catch(() => ({
@@ -345,8 +358,14 @@
   }
 
   window.addEventListener('message', (event) => {
-    if (event.source !== managedFrame?.contentWindow) return;
-    if (event.origin !== managedOrigin && event.origin !== 'null') return;
+    if (event.source !== managedFrame?.contentWindow || event.origin !== managedOrigin) return;
+
+    const embeddedInput = extractInput(event.data || {});
+    if (embeddedInput !== null && stdin && stdin.value !== embeddedInput) {
+      stdin.value = embeddedInput;
+      stdin.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
     const files = extractFiles(event.data || {});
     if (!Object.keys(files).length) return;
     managedFiles = files;
