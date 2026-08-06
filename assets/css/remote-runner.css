@@ -28,9 +28,71 @@
   display: none;
 }
 
+/* C, C++ and Go use the managed editor as the visible Code Lab editor. */
+.studio-editor > .external-runner-shell {
+  position: relative;
+  inset: auto;
+  grid-row: 1 / -1;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--studio-border);
+  background: #10131c;
+}
+
+.studio-editor > .external-runner-shell iframe {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+}
+
+.code-studio[data-managed-editor="true"] .studio-files {
+  display: none;
+}
+
+.code-studio[data-managed-editor="true"] .studio-grid {
+  grid-template-columns: minmax(480px, 1.4fr) minmax(320px, .6fr);
+}
+
+.code-studio[data-managed-editor="true"] .studio-editor {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  grid-column: 1;
+}
+
+.code-studio[data-managed-editor="true"] .studio-editor > :not(.external-runner-shell) {
+  display: none !important;
+}
+
+.code-studio[data-managed-editor="true"] .studio-editor > .external-runner-shell {
+  display: block !important;
+}
+
+.code-studio[data-managed-editor="true"] .studio-output {
+  grid-column: 2;
+}
+
+.code-studio[data-managed-editor="true"] .studio-mobile-tabs [data-mobile-view="files"] {
+  display: none;
+}
+
 @media (max-width: 900px) {
   .external-runner-shell iframe {
     min-height: 480px;
+  }
+
+  .code-studio[data-managed-editor="true"] .studio-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .code-studio[data-managed-editor="true"] .studio-editor,
+  .code-studio[data-managed-editor="true"] .studio-output {
+    grid-column: 1;
+  }
+
+  .code-studio[data-managed-editor="true"] .studio-editor > .external-runner-shell iframe {
+    min-height: 100%;
   }
 }
 
